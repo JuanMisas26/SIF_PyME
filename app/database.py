@@ -311,19 +311,6 @@ def init_db():
         }
         for clave_def, val_def in defaults_presupuesto.items():
             cursor.execute("INSERT OR IGNORE INTO configuracion (clave, valor) VALUES (?, ?)", (clave_def, val_def))
-            # Migrar valores legados de martamisasdesign o serie antigua FAC-2026 a los nuevos estándares
-            if clave_def == "serie_defecto":
-                cursor.execute("UPDATE configuracion SET valor = ? WHERE clave = ? AND valor IN ('FAC-2026', 'FAC')", (val_def, clave_def))
-            else:
-                cursor.execute(
-                    """UPDATE configuracion SET valor = ?
-                       WHERE clave = ? AND (
-                           valor LIKE '%martamisas%' OR
-                           valor LIKE '%Al proceso creativo de vuestras invitaciones%' OR
-                           valor LIKE '%Marta Misas Design%'
-                       )""",
-                    (val_def, clave_def)
-                )
         conn.commit()
 
         # Migration: lineas_factura (concepto_id -> producto_id)

@@ -710,7 +710,7 @@ def previsualizar_pdf_presupuesto(data: PresupuestoPreviewRequest):
         "cliente_nombre": cliente_nombre,
         "fecha": data.fecha or date.today(),
         "titulo": data.titulo or "Presupuesto de Servicios",
-        "subtitulo": data.subtitulo or "Precios para el diseño de invitaciones de boda",
+        "subtitulo": data.subtitulo or "Propuesta de servicios y condiciones comerciales",
         "condiciones_texto": data.condiciones_texto,
         "opciones": opciones_dict
     }
@@ -746,7 +746,7 @@ def descargar_pdf_presupuesto(id: int, opcion_id: Optional[int] = Query(None), d
         "cliente_nombre": cliente_nombre,
         "fecha": detalle.fecha,
         "titulo": detalle.titulo,
-        "subtitulo": detalle.subtitulo or "Precios para el diseño de invitaciones de boda",
+        "subtitulo": detalle.subtitulo or "Propuesta de servicios y condiciones comerciales",
         "opciones": [
             {
                 "nombre_opcion": op.nombre_opcion,

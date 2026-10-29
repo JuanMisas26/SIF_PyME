@@ -112,12 +112,12 @@
           <!-- Título y subtítulo -->
           <div class="form-group" style="grid-column: 1 / -1;">
             <label style="font-size: 11px; font-weight: 500; color: var(--mac-text-secondary); text-transform: uppercase;">Título del Dossier (Portada)</label>
-            <input type="text" id="pres-titulo" class="form-control" placeholder="Ej: Presupuesto para Cristina y Martín" value="Presupuesto para invitaciones">
+            <input type="text" id="pres-titulo" class="form-control" placeholder="Ej: Presupuesto de Servicios" value="Presupuesto">
           </div>
 
           <div class="form-group" style="grid-column: 1 / -1;">
             <label style="font-size: 11px; font-weight: 500; color: var(--mac-text-secondary); text-transform: uppercase;">Subtítulo de las Páginas</label>
-            <input type="text" id="pres-subtitulo" class="form-control" placeholder="Ej: Desglose de partidas y alcance" value="Precios para el diseño de invitaciones de boda">
+            <input type="text" id="pres-subtitulo" class="form-control" placeholder="Ej: Desglose de partidas y alcance" value="Propuesta de servicios y condiciones comerciales">
           </div>
         </div>
       </div>
@@ -1337,8 +1337,8 @@
       cliente_id: clienteId,
       fecha: presFechaInput.value || new Date().toISOString().split('T')[0],
       fecha_validez: presFechaValidezInput.value || null,
-      titulo: (presTituloInput && presTituloInput.value.trim()) ? presTituloInput.value.trim() : 'Presupuesto para invitaciones',
-      subtitulo: (presSubtituloInput && presSubtituloInput.value.trim()) ? presSubtituloInput.value.trim() : 'Precios para el diseño de invitaciones de boda',
+      titulo: (presTituloInput && presTituloInput.value.trim()) ? presTituloInput.value.trim() : 'Presupuesto',
+      subtitulo: (presSubtituloInput && presSubtituloInput.value.trim()) ? presSubtituloInput.value.trim() : 'Propuesta de servicios y condiciones comerciales',
       estado: presEstadoInput ? presEstadoInput.value : 'Borrador',
       opciones: opcionesData.map((op, idx) => ({
         nombre_opcion: op.nombre_opcion.trim(),
@@ -1439,7 +1439,7 @@
         fecha: presFechaInput?.value || new Date().toISOString().split('T')[0],
         fecha_validez: presFechaValidezInput?.value || null,
         titulo: (presTituloInput && presTituloInput.value.trim()) ? presTituloInput.value.trim() : 'Presupuesto de Servicios',
-        subtitulo: (presSubtituloInput && presSubtituloInput.value.trim()) ? presSubtituloInput.value.trim() : 'Precios para el diseño de invitaciones de boda',
+        subtitulo: (presSubtituloInput && presSubtituloInput.value.trim()) ? presSubtituloInput.value.trim() : 'Propuesta de servicios y condiciones comerciales',
         opciones: opcionesData.map((op, idx) => ({
           nombre_opcion: (op.nombre_opcion || '').trim() || `Opción ${idx + 1}`,
           orden: idx + 1,

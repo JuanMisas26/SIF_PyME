@@ -146,13 +146,13 @@ def test_configuracion_presupuesto_editorial():
 
     # Actualizar instagram
     res_put = client.put("/api/configuracion/presupuesto", json={
-        "presupuesto_instagram": "@martamisas_design_studio",
-        "presupuesto_email": "hola@martamisas.com"
+        "presupuesto_instagram": "@empresa_demo_estudio",
+        "presupuesto_email": "contacto@empresa-demo.com"
     })
     assert res_put.status_code == 200
     datos_actualizados = res_put.json()["datos"]
-    assert datos_actualizados["presupuesto_instagram"] == "@martamisas_design_studio"
-    assert datos_actualizados["presupuesto_email"] == "hola@martamisas.com"
+    assert datos_actualizados["presupuesto_instagram"] == "@empresa_demo_estudio"
+    assert datos_actualizados["presupuesto_email"] == "contacto@empresa-demo.com"
 
 
 def test_factura_pdf_editorial_estructura():
@@ -161,7 +161,7 @@ def test_factura_pdf_editorial_estructura():
 
     # 0. Configurar emisor
     client.put("/api/configuracion", json={
-        "nombre": "Marta Misas Design",
+        "nombre": "Empresa Comercial Demo",
         "nif": "12345678Z",
         "direccion": "Calle Mayor 1",
         "codigo_postal": "28001",
@@ -171,9 +171,9 @@ def test_factura_pdf_editorial_estructura():
 
     # 1. Crear cliente
     res_cli = client.post("/api/clientes", json={
-        "razon_social": "Marta & Javier",
+        "razon_social": "Cliente Demo SL",
         "telefono": "655443322",
-        "email": "marta.javier@boda.es"
+        "email": "contacto@clientedemo.es"
     })
     cli_id = res_cli.json()["id"]
 
@@ -217,7 +217,7 @@ def test_factura_pdf_editorial_estructura():
     text_p2 = reader.pages[1].extract_text()
     assert ("Factura Nº" in text_p2 or "FAC-2026-" in text_p2)
     assert "TOTAL FACTURA" in text_p2
-    assert "Marta & Javier" in text_p2
+    assert "Cliente Demo SL" in text_p2
 
 
 def test_presupuesto_n_opciones_Productos_independientes():

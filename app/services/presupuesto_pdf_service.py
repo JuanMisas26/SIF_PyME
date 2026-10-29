@@ -2,18 +2,19 @@ import os
 from fpdf import FPDF
 from app.paths import STATIC_DIR
 
-COLOR_TEXT = (91, 80, 73)        # #5b5049 Warm taupe / espresso
-COLOR_TEXT_MUTED = (122, 112, 105) # #7a7069 Muted taupe
-COLOR_BORDER = (213, 204, 190)    # #d5ccbe Sand / beige border
-COLOR_CARD_BG = (242, 240, 239)   # #f2f0ef Off-white warm cream
+# ── PALETA EDITORIAL (BLANCO Y NEGRO NEUTRO POR DEFECTO) ──
+COLOR_TEXT = (20, 20, 20)          # #141414 Black / deep neutral
+COLOR_TEXT_MUTED = (90, 90, 90)    # #5a5a5a Neutral medium gray
+COLOR_BORDER = (215, 215, 215)     # #d7d7d7 Neutral light gray border
+COLOR_CARD_BG = (255, 255, 255)    # #ffffff Pure white
 COLOR_WHITE = (255, 255, 255)
-COLOR_BAND = (215, 207, 194)      # #d7cfc2 Top band on process page
+COLOR_BAND = (240, 240, 240)       # #f0f0f0 Neutral subtle gray band
 
-# 4 Quadrant colors
-COLOR_Q1 = (130, 108, 87)         # #826c57
-COLOR_Q2 = (171, 150, 121)        # #ab9679
-COLOR_Q3 = (83, 68, 56)           # #534438
-COLOR_Q4 = (198, 180, 158)        # #c6b49e
+# 4 Quadrants in grayscale / monochrome
+COLOR_Q1 = (35, 35, 35)            # #232323 Deep charcoal
+COLOR_Q2 = (70, 70, 70)            # #464646 Medium dark gray
+COLOR_Q3 = (50, 50, 50)            # #323232 Charcoal
+COLOR_Q4 = (100, 100, 100)         # #646464 Medium gray
 
 DEFAULT_PRESUPUESTO_INSTAGRAM = os.getenv("DEFAULT_PRESUPUESTO_INSTAGRAM", "")
 DEFAULT_PRESUPUESTO_EMAIL = os.getenv("DEFAULT_PRESUPUESTO_EMAIL", "")
@@ -115,7 +116,7 @@ def generar_pdf_presupuesto(presupuesto: dict, config: dict, output_path: str = 
         partes_titulo = titulo.split(' para ', 1)
         linea_1 = partes_titulo[0].strip()
         linea_2 = f"para {partes_titulo[1].strip()}"
-    elif cliente_nombre and (not titulo or titulo in ['Presupuesto', 'Presupuesto de Servicios', 'Presupuesto para invitaciones']):
+    elif cliente_nombre and (not titulo or titulo in ['Presupuesto', 'Presupuesto de Servicios']):
         linea_1 = "Presupuesto"
         linea_2 = f"para {cliente_nombre}"
     elif ' de ' in titulo and cliente_nombre:
@@ -176,7 +177,7 @@ def generar_pdf_presupuesto(presupuesto: dict, config: dict, output_path: str = 
     # Subtítulo en cursiva
     pdf.set_xy(25, top_text_y + 11)
     pdf.set_font(pdf.serif_font, 'I', 13)
-    pdf.cell(160, 8, config.get('presupuesto_bienvenida_subtitulo') or 'Al proceso creativo de vuestras invitaciones', align='C')
+    pdf.cell(160, 8, config.get('presupuesto_bienvenida_subtitulo') or 'Propuesta de servicios y condiciones comerciales', align='C')
 
     # Texto cuerpo
     texto_bienvenida = config.get('presupuesto_bienvenida_texto', '')
@@ -343,7 +344,7 @@ def generar_pdf_presupuesto(presupuesto: dict, config: dict, output_path: str = 
             pdf.cell(60, 3.5, sub_bruto_str, align='R')
 
             pdf.set_xy(table_x, curr_y + 5)
-            pdf.set_text_color(37, 99, 235)
+            pdf.set_text_color(*COLOR_TEXT)
             lbl_dto_op = f"Descuento ({desc_nom_op[:20]}):" if desc_nom_op else "Descuento:"
             pdf.cell(108, 3.5, lbl_dto_op, align='L')
             pdf.set_xy(table_x + 112, curr_y + 5)
@@ -385,15 +386,11 @@ def generar_pdf_presupuesto(presupuesto: dict, config: dict, output_path: str = 
         pdf.set_text_color(*COLOR_TEXT)
 
         condiciones_a_mostrar = condiciones_texto or (
-            "• El presupuesto tiene una validez de 30 días.\n"
-            "• Condiciones de pago: Se requiere un pago inicial de 130€ al confirmar el presupuesto. El resto del presupuesto deberá abonarse antes del envió final. No incluido el precio del envió: 8.50€ a península. Cantidad mínima de invitaciones: 50 und.\n"
-            "• El precio incrementará o disminuirá según el rango de unidades: 1-75, 76-99, 100-124, 125-149, 150-145, 175-200.\n"
-            "• Todas nuestras ilustraciones están protegidas por derechos de autor. Cualquier uso o reproducción de las mismas sin nuestra aprobación puede dar lugar a acciones legales. No se enviarán los archivos digitales.\n"
-            "• Al aprobar el presupuesto, también se da permiso para publicar las invitaciones en redes sociales una vez que estén impresas y entregadas, a menos que se comunique lo contrario una vez aceptado el presupuesto.\n"
-            "• Una vez que se envían las imágenes para su aprobación y se procede con la impresión, no nos hacemos responsables de posibles errores no detectados por el cliente.\n"
-            "• El manipulado y montaje de todas las invitaciones están incluidos en el presupuesto.\n"
-            "• Nos reservamos el derecho de incluir en nuestros catálogos cualquiera de los diseños realizados una vez pasada la boda.\n"
-            "• El cambio de idioma conllevará un incremento de 10 € + IVA en el presupuesto (invitaciones con entrega en dos idiomas)."
+            "• Validez de la oferta: Este presupuesto tiene una validez de 30 días naturales a partir de su fecha de emisión.\n"
+            "• Forma de pago: 50% a la aceptación del presupuesto y 50% a la finalización y entrega del trabajo, salvo pacto en contrario.\n"
+            "• Plazos de entrega: Los plazos acordados comenzarán a contar a partir de la recepción de toda la información y material necesario.\n"
+            "• Modificaciones: Cualquier modificación o ampliación sobre el alcance inicial será presupuestada por separado.\n"
+            "• Impuestos: Los precios indicados no incluyen IVA salvo que se indique expresamente lo contrario."
         )
         lineas_cond = [c.strip() for c in condiciones_a_mostrar.split('\n') if c.strip()]
         for item in lineas_cond:
@@ -419,35 +416,35 @@ def generar_pdf_presupuesto(presupuesto: dict, config: dict, output_path: str = 
     pdf.set_xy(20, 18)
     pdf.set_font(pdf.serif_font, '', 28)
     pdf.set_text_color(*COLOR_TEXT)
-    pdf.cell(170, 10, config.get('presupuesto_proceso_titulo') or 'Proceso creativo', align='C')
+    pdf.cell(170, 10, config.get('presupuesto_proceso_titulo') or 'Proceso de trabajo', align='C')
 
     pdf.set_xy(20, 31)
     pdf.set_font(pdf.serif_font, 'I', 13)
-    pdf.cell(170, 7, config.get('presupuesto_proceso_subtitulo') or 'Tiempos de producción de vuestras invitaciones', align='C')
+    pdf.cell(170, 7, config.get('presupuesto_proceso_subtitulo') or 'Fases del proyecto y tiempos de ejecución', align='C')
 
     # 4 Cuadrantes configurables
     fases_data = [
         {
-            "titulo": config.get('proceso_fase1_titulo') or "Envio de presupuesto y aceptación",
-            "puntos_str": config.get('proceso_fase1_puntos') or "• Estilo de invitación\n• Elaboración de propuesta\n• Aceptación formal\n• Planificación del proyecto",
+            "titulo": config.get('proceso_fase1_titulo') or "Planificación y requerimientos",
+            "puntos_str": config.get('proceso_fase1_puntos') or "• Definición del alcance\n• Elaboración de propuesta\n• Aprobación y confirmación\n• Calendario de trabajo",
             "rect": (20, 75, 80, 62),
             "color": COLOR_Q1
         },
         {
-            "titulo": config.get('proceso_fase2_titulo') or "Presentación del diseño",
-            "puntos_str": config.get('proceso_fase2_puntos') or "• Propuestas de diseño\n• Tipografías y colores\n• Elección de materiales\n• Elección de propuesta final",
+            "titulo": config.get('proceso_fase2_titulo') or "Desarrollo inicial",
+            "puntos_str": config.get('proceso_fase2_puntos') or "• Ejecución de tareas iniciales\n• Presentación de avances\n• Selección de opciones\n• Primera revisión",
             "rect": (110, 75, 80, 62),
             "color": COLOR_Q2
         },
         {
-            "titulo": config.get('proceso_fase3_titulo') or "Envio de propuestas y cambios",
-            "puntos_str": config.get('proceso_fase3_puntos') or "• Aceptar el diseño\n• Revisar los cambios enviados\n• Aceptar materiales\n• Revisar unidades\n• Enviar nombres de los invitados",
+            "titulo": config.get('proceso_fase3_titulo') or "Revisiones y ajustes",
+            "puntos_str": config.get('proceso_fase3_puntos') or "• Aplicación de comentarios\n• Validación de especificaciones\n• Control de calidad\n• Aprobación final",
             "rect": (20, 144, 80, 62),
             "color": COLOR_Q3
         },
         {
-            "titulo": config.get('proceso_fase4_titulo') or "Listas para repartir",
-            "puntos_str": config.get('proceso_fase4_puntos') or "• Montaje completo\n• Entrega de invitaciones\n• Se entregarán 3 semanas después de la\naceptación del diseño final",
+            "titulo": config.get('proceso_fase4_titulo') or "Entrega y cierre",
+            "puntos_str": config.get('proceso_fase4_puntos') or "• Puesta en marcha / Entrega final\n• Validación de conformidad\n• Soporte y garantía\n• Facturación final",
             "rect": (110, 144, 80, 62),
             "color": COLOR_Q4
         }
@@ -496,12 +493,12 @@ def generar_pdf_presupuesto(presupuesto: dict, config: dict, output_path: str = 
     pdf.set_xy(20, 218)
     pdf.set_font(pdf.serif_font, '', 20)
     pdf.set_text_color(*COLOR_TEXT)
-    pdf.cell(170, 8, config.get('presupuesto_proceso_titulo') or 'Metodología de Trabajo', align='L')
+    pdf.cell(170, 8, config.get('presupuesto_proceso_titulo') or 'Proceso de trabajo', align='L')
 
     cierre_texto = config.get(
         'presupuesto_proceso_cierre'
     ) or (
-        "Creemos que las invitaciones tienen que ser un reflejo de la personalidad de los novios, su historia, sus gustos y la estética que van a seguir en su boda. Por lo que involucramos a los novios en la elección de cada una de las partes de la invitación, tipografía, colores, sobres, materiales..."
+        "Nuestro compromiso se basa en ofrecer un servicio riguroso, adaptado a los más altos estándares de calidad y con una comunicación fluida durante todas las etapas de ejecución."
     )
     pdf.set_xy(20, 229)
     pdf.set_font(pdf.sans_font, '', 8.5)

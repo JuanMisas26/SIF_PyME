@@ -301,18 +301,18 @@ def eliminar_pdf_factura(numero_factura: str, fecha_emision: Any, sin_iva: Optio
         return False
 
 
-# ── PALETA EDITORIAL (DISEÑO SIF PYME) ──
-COLOR_TEXT = (91, 80, 73)          # #5b5049 Warm taupe / espresso
-COLOR_TEXT_MUTED = (122, 112, 105)   # #7a7069 Muted taupe
-COLOR_BORDER = (213, 204, 190)      # #d5ccbe Sand / beige border
-COLOR_CARD_BG = (242, 240, 239)     # #f2f0ef Off-white warm cream
+# ── PALETA EDITORIAL (BLANCO Y NEGRO NEUTRO POR DEFECTO) ──
+COLOR_TEXT = (20, 20, 20)          # #141414 Black / deep neutral
+COLOR_TEXT_MUTED = (90, 90, 90)    # #5a5a5a Neutral medium gray
+COLOR_BORDER = (215, 215, 215)     # #d7d7d7 Neutral light gray border
+COLOR_CARD_BG = (255, 255, 255)    # #ffffff Pure white
 COLOR_WHITE = (255, 255, 255)
-COLOR_BAND = (215, 207, 194)        # #d7cfc2 Top band on process page
+COLOR_BAND = (240, 240, 240)       # #f0f0f0 Neutral subtle gray band
 
-COLOR_Q1 = (130, 108, 87)           # #826c57
-COLOR_Q2 = (171, 150, 121)          # #ab9679
-COLOR_Q3 = (83, 68, 56)             # #534438
-COLOR_Q4 = (198, 180, 158)          # #c6b49e
+COLOR_Q1 = (35, 35, 35)            # #232323 Deep charcoal
+COLOR_Q2 = (70, 70, 70)            # #464646 Medium dark gray
+COLOR_Q3 = (50, 50, 50)            # #323232 Charcoal
+COLOR_Q4 = (100, 100, 100)         # #646464 Medium gray
 
 
 class FacturaPDF(FPDF):
@@ -750,7 +750,7 @@ def generar_pdf_factura(
         tot_box_y += 4.5
 
         pdf.set_xy(tot_box_x, tot_box_y)
-        pdf.set_text_color(37, 99, 235)
+        pdf.set_text_color(*COLOR_TEXT)
         label_dto = f"Descuento ({desc_nombre[:20]}):" if desc_nombre else "Descuento:"
         pdf.cell(50, 4.5, label_dto, align='L')
         pdf.cell(37, 4.5, f"-{fmt_eur(desc_importe)}", align='R')
@@ -811,7 +811,7 @@ def generar_pdf_factura(
     info_y = max(iva_line_y + 14, 246)
 
     # Caja de transferencia bancaria
-    pdf.set_fill_color(248, 246, 243)
+    pdf.set_fill_color(245, 245, 245)
     pdf.set_draw_color(*COLOR_BORDER)
     pdf.set_line_width(0.2)
     pdf.rect(table_x, info_y, 95, 24, style='FD')
@@ -842,7 +842,7 @@ def generar_pdf_factura(
     if observaciones:
         obs_x = table_x + 100
         obs_w = table_w - 100
-        pdf.set_fill_color(248, 246, 243)
+        pdf.set_fill_color(245, 245, 245)
         pdf.rect(obs_x, info_y, obs_w, 24, style='FD')
 
         pdf.set_xy(obs_x + 3, info_y + 2)

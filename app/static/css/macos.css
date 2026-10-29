@@ -13,9 +13,9 @@
   --mac-separator: #D1D1D6;
   --mac-separator-subtle: #E5E5EA;
   --mac-table-row-alt: #FBFBFC;
-  --mac-table-row-hover: rgba(10, 132, 255, 0.05);
-  --mac-table-row-selected: rgba(10, 132, 255, 0.09);
-  --mac-table-row-selected-hover: rgba(10, 132, 255, 0.14);
+  --mac-table-row-hover: rgba(0, 0, 0, 0.03);
+  --mac-table-row-selected: rgba(0, 0, 0, 0.08);
+  --mac-table-row-selected-hover: rgba(0, 0, 0, 0.12);
   --mac-table-row-selected-inactive: rgba(0, 0, 0, 0.04);
 
   /* Tipografía y Textos */
@@ -24,11 +24,11 @@
   --mac-text-tertiary: #86868B;
   --mac-text-quaternary: #C7C7CC;
 
-  /* Color de acento nativo de macOS */
-  --mac-accent: #0A84FF;
-  --mac-accent-hover: #0071E3;
-  --mac-accent-active: #005BB5;
-  --mac-accent-focus-ring: rgba(10, 132, 255, 0.35);
+  /* Color de acento nativo de macOS (Blanco y negro / Graphite por defecto) */
+  --mac-accent: #1D1D1F;
+  --mac-accent-hover: #3A3A3C;
+  --mac-accent-active: #000000;
+  --mac-accent-focus-ring: rgba(0, 0, 0, 0.20);
 
   /* Colores semánticos de estado (Apple System Colors) */
   --mac-system-green: #34C759;
@@ -198,14 +198,14 @@
 
 .btn-native.btn-primary {
   background: var(--mac-accent);
-  border-color: #0071E3;
+  border-color: #111112;
   color: #FFFFFF;
   font-weight: 500;
 }
 
 .btn-native.btn-primary:hover {
   background: var(--mac-accent-hover);
-  border-color: #0062C4;
+  border-color: #2C2C2E;
 }
 
 .btn-native.btn-primary:active {
@@ -504,7 +504,7 @@
 
 .mac-table tbody tr.selected td {
   color: var(--mac-text-primary) !important;
-  border-bottom-color: rgba(10, 132, 255, 0.18);
+  border-bottom-color: rgba(0, 0, 0, 0.12);
   background: transparent !important;
 }
 
