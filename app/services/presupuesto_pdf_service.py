@@ -60,156 +60,20 @@ class EditorialPresupuestoPDF(FPDF):
 
 def generar_pdf_presupuesto(presupuesto: dict, config: dict, output_path: str = None) -> bytes:
     """
-    Genera el PDF editorial completo para un presupuesto con control de desbordamiento y textos configurables.
+    Genera el PDF del presupuesto (sin portada, sin página de bienvenida y sin página final de proceso).
+    Contiene directamente las páginas con las opciones, partidas, subtotales, totales y condiciones.
     """
     pdf = EditorialPresupuestoPDF()
-    img_dir = str(STATIC_DIR / 'img' / 'presupuesto')
-    portada_img = os.path.join(img_dir, 'portada_default.jpg')
-    bienvenida_img = os.path.join(img_dir, 'bienvenida_default.jpg')
 
-    instagram = config.get('presupuesto_instagram') or config.get('web') or DEFAULT_PRESUPUESTO_INSTAGRAM
-    email = config.get('presupuesto_email') or config.get('email') or DEFAULT_PRESUPUESTO_EMAIL
-    year = str(presupuesto.get('fecha', '2026'))[:4]
     cliente_nombre = presupuesto.get('cliente_nombre') or ''
     titulo = presupuesto.get('titulo') or 'Presupuesto de Servicios'
     subtitulo = presupuesto.get('subtitulo') or 'Propuesta de servicios y condiciones comerciales'
     opciones = presupuesto.get('opciones', [])
+    if not opciones:
+        opciones = [{'nombre_opcion': '', 'lineas': []}]
 
     # ══════════════════════════════════════════════════════════
-    # PÁGINA 1: PORTADA (Fondo completo + textos superpuestos)
-    # ══════════════════════════════════════════════════════════
-    pdf.add_page()
-
-    # Fondo / Foto de portada (respetando proporción para no deformar)
-    if os.path.exists(portada_img):
-        try:
-            from PIL import Image
-            with Image.open(portada_img) as img:
-                ratio = img.size[0] / img.size[1]
-        except Exception:
-            ratio = 1.086
-
-        if 0.65 <= ratio <= 0.75:
-            # Si la imagen ya tiene proporción vertical A4, cubre la página entera
-            pdf.image(portada_img, x=0, y=0, w=210, h=297)
-        else:
-            # Si no es A4 (como la plantilla original 175x161 mm), se centra sin estirar
-            img_w = 175
-            img_h = img_w / ratio
-            img_x = (210 - img_w) / 2
-            img_y = 44
-            pdf.image(portada_img, x=img_x, y=img_y, w=img_w, h=img_h)
-
-    # Encima se dibujan los textos
-    # Año superior
-    pdf.set_xy(21, 21)
-    pdf.set_font(pdf.sans_font, '', 13)
-    pdf.set_text_color(*COLOR_TEXT)
-    pdf.cell(40, 8, year, align='L')
-
-    # Título en la parte inferior derecha con personalización por cliente
-    pdf.set_xy(108, 214)
-    pdf.set_font(pdf.serif_font, '', 28)
-    pdf.set_text_color(*COLOR_TEXT)
-
-    if ' para ' in titulo:
-        partes_titulo = titulo.split(' para ', 1)
-        linea_1 = partes_titulo[0].strip()
-        linea_2 = f"para {partes_titulo[1].strip()}"
-    elif cliente_nombre and (not titulo or titulo in ['Presupuesto', 'Presupuesto de Servicios']):
-        linea_1 = "Presupuesto"
-        linea_2 = f"para {cliente_nombre}"
-    elif ' de ' in titulo and cliente_nombre:
-        linea_1 = "Presupuesto"
-        linea_2 = f"para {cliente_nombre}"
-    else:
-        linea_1 = titulo
-        linea_2 = None
-
-    if linea_2:
-        pdf.cell(85, 10, linea_1, align='L')
-        pdf.set_xy(108, 226)
-        font_size = 26 if len(linea_2) <= 20 else (22 if len(linea_2) <= 28 else 18)
-        pdf.set_font(pdf.serif_font, 'I', font_size)
-        pdf.cell(85, 10, linea_2, align='L')
-    else:
-        pdf.cell(85, 10, linea_1, align='L')
-
-    # Redes / Web al pie si existen
-    if instagram:
-        pdf.set_xy(25, 270)
-        pdf.set_font(pdf.sans_font, '', 10)
-        pdf.set_text_color(*COLOR_TEXT)
-        pdf.cell(160, 6, instagram, align='C')
-
-    # ══════════════════════════════════════════════════════════
-    # PÁGINA 2: BIENVENIDOS
-    # ══════════════════════════════════════════════════════════
-    pdf.add_page()
-    if os.path.exists(bienvenida_img):
-        try:
-            from PIL import Image
-            with Image.open(bienvenida_img) as img:
-                b_ratio = img.size[0] / img.size[1]
-        except Exception:
-            b_ratio = 0.707
-
-        if 0.65 <= b_ratio <= 0.75:
-            # Fondo A4 completo diseñado
-            pdf.image(bienvenida_img, x=0, y=0, w=210, h=297)
-            top_text_y = 126
-        else:
-            img_w = 175
-            img_h = 84
-            img_x = (210 - img_w) / 2
-            img_y = 15
-            pdf.image(bienvenida_img, x=img_x, y=img_y, w=img_w, h=img_h)
-            top_text_y = 108
-    else:
-        top_text_y = 108
-
-    # Encabezado "Bienvenidos"
-    pdf.set_xy(25, top_text_y)
-    pdf.set_font(pdf.serif_font, '', 28)
-    pdf.set_text_color(*COLOR_TEXT)
-    pdf.cell(160, 10, config.get('presupuesto_bienvenida_titulo') or 'Bienvenidos', align='C')
-
-    # Subtítulo en cursiva
-    pdf.set_xy(25, top_text_y + 11)
-    pdf.set_font(pdf.serif_font, 'I', 13)
-    pdf.cell(160, 8, config.get('presupuesto_bienvenida_subtitulo') or 'Propuesta de servicios y condiciones comerciales', align='C')
-
-    # Texto cuerpo
-    texto_bienvenida = config.get('presupuesto_bienvenida_texto', '')
-    if not texto_bienvenida:
-        texto_bienvenida = DEFAULT_BIENVENIDA_TEXTO
-
-    pdf.set_xy(25, top_text_y + 27)
-    pdf.set_font(pdf.sans_font, '', 9.2)
-    pdf.set_text_color(*COLOR_TEXT)
-    for parrafo in texto_bienvenida.replace('\r\n', '\n').split('\n\n'):
-        if not parrafo.strip():
-            continue
-        pdf.set_x(25)
-        pdf.multi_cell(160, 5.0, parrafo.strip(), align='J')
-        pdf.ln(4)
-
-    # Pie página 2: Año a la izq, EMAIL a la der
-    pdf.set_xy(25, 262)
-    pdf.set_font(pdf.sans_font, '', 14)
-    pdf.set_text_color(*COLOR_TEXT)
-    pdf.cell(40, 6, year, align='L')
-
-    if email:
-        pdf.set_xy(110, 258)
-        pdf.set_font(pdf.sans_font, '', 8)
-        pdf.cell(76, 4, 'EMAIL', align='R')
-        pdf.set_xy(110, 263)
-        pdf.set_font(pdf.sans_font, '', 9.2)
-        pdf.cell(76, 5, email, align='R')
-
-    # ══════════════════════════════════════════════════════════
-    # PÁGINAS 3..N: OPCIONES DE PRESUPUESTO CON CONTROL DE DESBORDAMIENTO
+    # PÁGINAS DE OPCIONES DE PRESUPUESTO CON CONTROL DE DESBORDAMIENTO
     # ══════════════════════════════════════════════════════════
     condiciones_texto = config.get('presupuesto_condiciones', '')
     card_x, card_y, card_w, card_h = 9.5, 8.5, 191, 280
@@ -224,21 +88,50 @@ def generar_pdf_presupuesto(presupuesto: dict, config: dict, output_path: str = 
         pdf.rect(card_x, card_y, card_w, card_h, style='F')
 
     def render_op_first_header(op_name):
-        pdf.set_xy(table_x, 24)
-        pdf.set_font(pdf.serif_font, '', 28)
+        pdf.set_xy(table_x, 20)
+        pdf.set_font(pdf.serif_font, '', 26)
         pdf.set_text_color(*COLOR_TEXT)
         pdf.cell(100, 10, 'Presupuesto', align='L')
 
-        pdf.set_xy(table_x, 35)
-        pdf.set_font(pdf.serif_font, 'I', 13)
-        pdf.multi_cell(100, 5.5, subtitulo, align='L')
+        pdf.set_xy(table_x, 31)
+        pdf.set_font(pdf.serif_font, 'I', 11)
+        pdf.set_text_color(*COLOR_TEXT_MUTED)
+        pdf.multi_cell(100, 4.5, subtitulo, align='L')
+
+        num_pres = presupuesto.get('numero_presupuesto') or ''
+        fecha_pres = presupuesto.get('fecha') or ''
+        fecha_str = str(fecha_pres)[:10] if fecha_pres else ''
+
+        # Información del documento y cliente a la derecha
+        y_meta = 20
+        if num_pres:
+            pdf.set_xy(110, y_meta)
+            pdf.set_font(pdf.sans_font, 'B', 10)
+            pdf.set_text_color(*COLOR_TEXT)
+            pdf.cell(80, 4.5, f"Nº {num_pres}", align='R')
+            y_meta += 5
+
+        if fecha_str:
+            pdf.set_xy(110, y_meta)
+            pdf.set_font(pdf.sans_font, '', 8.5)
+            pdf.set_text_color(*COLOR_TEXT_MUTED)
+            pdf.cell(80, 4, f"Fecha: {fecha_str}", align='R')
+            y_meta += 4.5
+
+        if cliente_nombre:
+            pdf.set_xy(110, y_meta)
+            pdf.set_font(pdf.sans_font, '', 8.5)
+            pdf.set_text_color(*COLOR_TEXT)
+            pdf.cell(80, 4, f"Cliente: {cliente_nombre}", align='R')
+            y_meta += 4.5
 
         if op_name:
-            pdf.set_xy(125, 28)
-            pdf.set_font(pdf.sans_font, '', 9)
-            pdf.cell(65, 6, op_name.upper(), align='R')
+            pdf.set_xy(110, y_meta)
+            pdf.set_font(pdf.sans_font, 'B', 8.5)
+            pdf.set_text_color(*COLOR_TEXT)
+            pdf.cell(80, 4.5, op_name.upper(), align='R')
 
-        table_y = 60
+        table_y = 56
         pdf.set_xy(table_x, table_y + 2)
         pdf.set_font(pdf.sans_font, '', 8.0)
         pdf.set_text_color(*COLOR_TEXT_MUTED)
@@ -399,128 +292,6 @@ def generar_pdf_presupuesto(presupuesto: dict, config: dict, output_path: str = 
             pdf.set_x(table_x)
             pdf.multi_cell(table_w, 3.4, item, align='L')
             pdf.ln(0.8)
-
-    # ══════════════════════════════════════════════════════════
-    # PÁGINA FINAL: PROCESO / METODOLOGÍA DE TRABAJO
-    # ══════════════════════════════════════════════════════════
-    pdf.add_page()
-    # Fondo general
-    pdf.set_fill_color(*COLOR_CARD_BG)
-    pdf.rect(0, 0, 210, 297, style='F')
-
-    # Franja superior beige
-    pdf.set_fill_color(*COLOR_BAND)
-    pdf.rect(0, 0, 210, 60, style='F')
-
-    # Título proceso / metodología
-    pdf.set_xy(20, 18)
-    pdf.set_font(pdf.serif_font, '', 28)
-    pdf.set_text_color(*COLOR_TEXT)
-    pdf.cell(170, 10, config.get('presupuesto_proceso_titulo') or 'Proceso de trabajo', align='C')
-
-    pdf.set_xy(20, 31)
-    pdf.set_font(pdf.serif_font, 'I', 13)
-    pdf.cell(170, 7, config.get('presupuesto_proceso_subtitulo') or 'Fases del proyecto y tiempos de ejecución', align='C')
-
-    # 4 Cuadrantes configurables
-    fases_data = [
-        {
-            "titulo": config.get('proceso_fase1_titulo') or "Planificación y requerimientos",
-            "puntos_str": config.get('proceso_fase1_puntos') or "• Definición del alcance\n• Elaboración de propuesta\n• Aprobación y confirmación\n• Calendario de trabajo",
-            "rect": (20, 75, 80, 62),
-            "color": COLOR_Q1
-        },
-        {
-            "titulo": config.get('proceso_fase2_titulo') or "Desarrollo inicial",
-            "puntos_str": config.get('proceso_fase2_puntos') or "• Ejecución de tareas iniciales\n• Presentación de avances\n• Selección de opciones\n• Primera revisión",
-            "rect": (110, 75, 80, 62),
-            "color": COLOR_Q2
-        },
-        {
-            "titulo": config.get('proceso_fase3_titulo') or "Revisiones y ajustes",
-            "puntos_str": config.get('proceso_fase3_puntos') or "• Aplicación de comentarios\n• Validación de especificaciones\n• Control de calidad\n• Aprobación final",
-            "rect": (20, 144, 80, 62),
-            "color": COLOR_Q3
-        },
-        {
-            "titulo": config.get('proceso_fase4_titulo') or "Entrega y cierre",
-            "puntos_str": config.get('proceso_fase4_puntos') or "• Puesta en marcha / Entrega final\n• Validación de conformidad\n• Soporte y garantía\n• Facturación final",
-            "rect": (110, 144, 80, 62),
-            "color": COLOR_Q4
-        }
-    ]
-
-    for fase in fases_data:
-        qx, qy, qw, qh = fase["rect"]
-        pdf.set_fill_color(*fase["color"])
-        pdf.rect(qx, qy, qw, qh, style='F')
-
-        # Título del cuadrante en cursiva blanca
-        pdf.set_xy(qx + 5, qy + 5)
-        pdf.set_font(pdf.serif_font, 'I', 11)
-        pdf.set_text_color(*COLOR_WHITE)
-        pdf.cell(qw - 10, 6, fase["titulo"], align='L')
-
-        # Línea separadora blanca fina
-        pdf.set_draw_color(*COLOR_WHITE)
-        pdf.set_line_width(0.3)
-        pdf.line(qx + 5, qy + 13, qx + qw - 5, qy + 13)
-
-        # Viñetas
-        py = qy + 16
-        pdf.set_font(pdf.sans_font, '', 7.8)
-        puntos = []
-        for raw_line in fase["puntos_str"].split('\n'):
-            line = raw_line.strip()
-            if not line:
-                continue
-            if line.startswith('•') or line.startswith('-'):
-                puntos.append(line.lstrip('•-').strip())
-            else:
-                if puntos:
-                    puntos[-1] += ' ' + line
-                else:
-                    puntos.append(line)
-
-        for p in puntos[:5]:
-            pdf.set_xy(qx + 5, py)
-            pdf.cell(3, 4, "•", align='L')
-            pdf.set_xy(qx + 9, py)
-            pdf.multi_cell(qw - 14, 3.8, p, align='L')
-            py = pdf.get_y() + 0.8
-
-    # Texto inferior de cierre
-    pdf.set_xy(20, 218)
-    pdf.set_font(pdf.serif_font, '', 20)
-    pdf.set_text_color(*COLOR_TEXT)
-    pdf.cell(170, 8, config.get('presupuesto_proceso_titulo') or 'Proceso de trabajo', align='L')
-
-    cierre_texto = config.get(
-        'presupuesto_proceso_cierre'
-    ) or (
-        "Nuestro compromiso se basa en ofrecer un servicio riguroso, adaptado a los más altos estándares de calidad y con una comunicación fluida durante todas las etapas de ejecución."
-    )
-    pdf.set_xy(20, 229)
-    pdf.set_font(pdf.sans_font, '', 8.5)
-    pdf.set_text_color(*COLOR_TEXT)
-    for parrafo in cierre_texto.replace('\r\n', '\n').split('\n\n'):
-        if not parrafo.strip():
-            continue
-        pdf.set_x(20)
-        pdf.multi_cell(170, 4.4, parrafo.strip(), align='J')
-        pdf.ln(3)
-
-    # Pie página 5: Año y Redes / Web
-    pdf.set_xy(20, 265)
-    pdf.set_font(pdf.sans_font, '', 13)
-    pdf.set_text_color(*COLOR_TEXT)
-    pdf.cell(40, 6, year, align='L')
-
-    if instagram:
-        pdf.set_xy(110, 265)
-        pdf.set_font(pdf.sans_font, '', 10)
-        pdf.set_text_color(*COLOR_TEXT)
-        pdf.cell(80, 6, instagram, align='R')
 
     pdf_bytes = bytes(pdf.output())
     if output_path:

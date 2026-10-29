@@ -454,7 +454,7 @@ def test_textos_configuracion_personalizados_empresa():
     assert "novios" not in texto_total.lower()
     assert "invitaciones" not in texto_total.lower()
 
-    # Comprobar que en un presupuesto SÍ se aplican los textos de bienvenida y proceso corporativo
+    # Comprobar que el presupuesto generado es directo y limpio (sin portada, sin bienvenida y sin proceso)
     res_pres = client.post("/api/presupuestos", json={
         "numero_presupuesto": "PRES-CORP-01",
         "cliente_id": cli_id,
@@ -468,9 +468,12 @@ def test_textos_configuracion_personalizados_empresa():
     res_pres_pdf = client.get(f"/api/presupuestos/{pres_id}/pdf")
     reader_pres = pypdf.PdfReader(io.BytesIO(res_pres_pdf.content))
     texto_pres = " ".join([p.extract_text() for p in reader_pres.pages])
-    assert "Bienvenida Corporativa" in texto_pres
-    assert "Somos especialistas en desarrollo cloud" in texto_pres
-    assert "Metodología Agile Scrum" in texto_pres
+    assert "Arquitectura Cloud" in texto_pres
+    assert "Cliente Tech Global" in texto_pres
+    assert "PRES-CORP-01" in texto_pres
+    assert "Bienvenida" not in texto_pres
+    assert "Metodología Agile Scrum" not in texto_pres
+    assert "Proceso de trabajo" not in texto_pres
 
 
 def test_conversion_presupuesto_a_factura_genera_pdf_y_redireccion(client, emisor_configurado):
