@@ -3,8 +3,8 @@ from starlette.testclient import TestClient
 from app.services.pdf_service import get_pdf_output_path
 
 
-def test_crear_facturas_con_y_sin_iva_en_carpetas_separadas(client: TestClient, emisor_configurado):
-    """Verifica que las facturas se organizan físicamente en subcarpetas Con_IVA y Sin_IVA."""
+def test_crear_facturas_con_y_sin_iva_en_misma_carpeta(client: TestClient, emisor_configurado):
+    """Verifica que las facturas (con y sin IVA) se guardan juntas en la misma carpeta mensual."""
     # 1. Crear cliente
     cli_res = client.post("/api/clientes", json={"razon_social": "Cliente Test IVA", "nif_cif": "B10000008"})
     assert cli_res.status_code == 201
@@ -23,7 +23,9 @@ def test_crear_facturas_con_y_sin_iva_en_carpetas_separadas(client: TestClient, 
 
     path_con = get_pdf_output_path(con_num, "2026-10-10", sin_iva=False)
     assert path_con.exists()
-    assert "Con_IVA" in path_con.parts
+    assert "4T" in path_con.parts
+    assert "10_Octubre" in path_con.parts
+    assert "Con_IVA" not in path_con.parts
     assert "Sin_IVA" not in path_con.parts
 
     # 3. Factura SIN IVA
@@ -39,17 +41,20 @@ def test_crear_facturas_con_y_sin_iva_en_carpetas_separadas(client: TestClient, 
 
     path_sin = get_pdf_output_path(sin_num, "2026-10-10", sin_iva=True)
     assert path_sin.exists()
-    assert "Sin_IVA" in path_sin.parts
+    assert "4T" in path_sin.parts
+    assert "10_Octubre" in path_sin.parts
+    assert "Sin_IVA" not in path_sin.parts
     assert "Con_IVA" not in path_sin.parts
 
-    # Asegurar que ambos archivos existen simultáneamente en sus respectivas carpetas sin interferir
+    # Ambas facturas residen en el mismo directorio mensual
+    assert path_con.parent == path_sin.parent
+    assert path_con != path_sin
     assert path_con.exists()
     assert path_sin.exists()
-    assert path_con != path_sin
 
 
 def test_actualizar_factura_migra_entre_con_y_sin_iva(client: TestClient, emisor_configurado):
-    """Verifica que cambiar el régimen de IVA de una factura mueve su PDF y actualiza la serie/numeración."""
+    """Verifica que cambiar el régimen de IVA conserva el archivo en la misma carpeta unificada."""
     cli_res = client.post("/api/clientes", json={"razon_social": "Cliente Migracion IVA", "nif_cif": "B10000008"})
     assert cli_res.status_code == 201
     cli_id = cli_res.json()["id"]
@@ -66,7 +71,8 @@ def test_actualizar_factura_migra_entre_con_y_sin_iva(client: TestClient, emisor
 
     path_con = get_pdf_output_path(numero_con, "2026-10-12", sin_iva=False)
     assert path_con.exists()
-    assert "Con_IVA" in path_con.parts
+    assert "10_Octubre" in path_con.parts
+    assert "Con_IVA" not in path_con.parts
 
     # 2. Modificar factura pasando a régimen SIN IVA
     upd_res = client.put(f"/api/facturas/{fac_id}", json={
@@ -78,19 +84,17 @@ def test_actualizar_factura_migra_entre_con_y_sin_iva(client: TestClient, emisor
     assert upd_res.status_code == 200
     numero_sin = upd_res.json()["numero_factura"]
 
-    # La numeración debe cambiar de la serie con IVA a la serie sin IVA
-    assert numero_sin != numero_con
-    assert "Sin IVA" in numero_sin
+    # La numeración unificada y la ruta se mantienen
+    assert numero_sin == numero_con
+    assert "Sin IVA" not in numero_sin
 
     path_sin = get_pdf_output_path(numero_sin, "2026-10-12", sin_iva=True)
+    assert path_sin == path_con
     assert path_sin.exists()
-    assert "Sin_IVA" in path_sin.parts
-    # El archivo anterior en Con_IVA ya no debe existir
-    assert not path_con.exists()
 
 
 def test_actualizar_factura_migra_entre_sin_y_con_iva(client: TestClient, emisor_configurado):
-    """Verifica la migración inversa de Sin IVA a Con IVA, actualizando numeración y carpetas."""
+    """Verifica la conmutación de Sin IVA a Con IVA manteniendo la misma carpeta."""
     cli_res = client.post("/api/clientes", json={"razon_social": "Cliente Migracion Inversa", "nif_cif": "B10000008"})
     assert cli_res.status_code == 201
     cli_id = cli_res.json()["id"]
@@ -104,11 +108,11 @@ def test_actualizar_factura_migra_entre_sin_y_con_iva(client: TestClient, emisor
     })
     fac_id = fac_res.json()["id"]
     numero_sin = fac_res.json()["numero_factura"]
-    assert "Sin IVA" in numero_sin
+    assert "Sin IVA" not in numero_sin
 
     path_sin = get_pdf_output_path(numero_sin, "2026-10-14", sin_iva=True)
     assert path_sin.exists()
-    assert "Sin_IVA" in path_sin.parts
+    assert "Sin_IVA" not in path_sin.parts
 
     # 2. Modificar factura pasando a régimen CON IVA
     upd_res = client.put(f"/api/facturas/{fac_id}", json={
@@ -120,19 +124,16 @@ def test_actualizar_factura_migra_entre_sin_y_con_iva(client: TestClient, emisor
     assert upd_res.status_code == 200
     numero_con = upd_res.json()["numero_factura"]
 
-    # La numeración debe volver a la serie general con IVA
-    assert numero_con != numero_sin
+    assert numero_con == numero_sin
     assert "Sin IVA" not in numero_con
 
     path_con = get_pdf_output_path(numero_con, "2026-10-14", sin_iva=False)
+    assert path_con == path_sin
     assert path_con.exists()
-    assert "Con_IVA" in path_con.parts
-    # El archivo anterior en Sin_IVA ya no debe existir
-    assert not path_sin.exists()
 
 
 def test_ciclo_borrado_restaurado_factura_sin_iva(client: TestClient, emisor_configurado):
-    """Verifica que el ciclo de papelera y destrucción funciona correctamente en la carpeta Sin_IVA."""
+    """Verifica que el ciclo de papelera y destrucción funciona correctamente en la carpeta mensual unificada."""
     cli_res = client.post("/api/clientes", json={"razon_social": "Cliente Ciclo Sin IVA", "nif_cif": "B10000008"})
     assert cli_res.status_code == 201
     cli_id = cli_res.json()["id"]
@@ -148,16 +149,16 @@ def test_ciclo_borrado_restaurado_factura_sin_iva(client: TestClient, emisor_con
 
     path_sin = get_pdf_output_path(numero, "2026-10-15", sin_iva=True)
     assert path_sin.exists()
-    assert "Sin_IVA" in path_sin.parts
+    assert "10_Octubre" in path_sin.parts
+    assert "Sin_IVA" not in path_sin.parts
 
     # 1. Enviar a papelera -> PDF borrado de disco
     client.delete(f"/api/facturas/{fac_id}")
     assert not path_sin.exists()
 
-    # 2. Restaurar de papelera -> PDF regenerado en Sin_IVA
+    # 2. Restaurar de papelera -> PDF regenerado
     client.post(f"/api/facturas/{fac_id}/restaurar")
     assert path_sin.exists()
-    assert "Sin_IVA" in path_sin.parts
 
     # 3. Destruir permanentemente -> PDF borrado de disco
     client.delete(f"/api/facturas/{fac_id}/destruir")

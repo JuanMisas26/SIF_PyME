@@ -364,7 +364,9 @@ def test_restaurar_version_factura_cambio_regimen_iva(client, emisor_configurado
     from app.services.pdf_service import get_pdf_output_path
     path_v1 = get_pdf_output_path(numero_v1, "2026-07-01", sin_iva=False)
     assert path_v1.exists()
-    assert "Con_IVA" in path_v1.parts
+    assert "07_Julio" in path_v1.parts
+    assert "Con_IVA" not in path_v1.parts
+    assert "Sin_IVA" not in path_v1.parts
 
     # 3. Versión 2: Modificar factura a SIN IVA
     res_up = client.put(f"/api/facturas/{factura_id}", json={
@@ -375,20 +377,20 @@ def test_restaurar_version_factura_cambio_regimen_iva(client, emisor_configurado
     })
     assert res_up.status_code == 200
     numero_v2 = res_up.json()["numero_factura"]
-    assert "Sin IVA" in numero_v2
-    assert numero_v2 != numero_v1
+    # Con numeración unificada se mantiene el mismo número de factura
+    assert numero_v2 == numero_v1
+    assert "Sin IVA" not in numero_v2
 
     path_v2 = get_pdf_output_path(numero_v2, "2026-07-01", sin_iva=True)
+    assert path_v2 == path_v1
     assert path_v2.exists()
-    assert "Sin_IVA" in path_v2.parts
-    assert not path_v1.exists()
 
     # 4. Restaurar a la Versión 1 (que era CON IVA)
     res_rest = client.post(f"/api/facturas/{factura_id}/versiones/1/restaurar")
     assert res_rest.status_code == 200
     numero_restaurado = res_rest.json()["numero_factura"]
 
-    # Debe volver a la serie con IVA
+    # Debe mantener la numeración unificada
     assert "Sin IVA" not in numero_restaurado
     assert numero_restaurado == numero_v1
 
@@ -398,8 +400,7 @@ def test_restaurar_version_factura_cambio_regimen_iva(client, emisor_configurado
     assert f_bd["numero_factura"] == numero_v1
     assert f_bd["iva_total"] == 210.0
 
-    # Comprobar archivos físicos en disco
+    # Comprobar archivos físicos en disco (en la misma carpeta del mes)
     path_restaurado = get_pdf_output_path(numero_restaurado, "2026-07-01", sin_iva=False)
+    assert path_restaurado == path_v1
     assert path_restaurado.exists()
-    assert "Con_IVA" in path_restaurado.parts
-    assert not path_v2.exists()

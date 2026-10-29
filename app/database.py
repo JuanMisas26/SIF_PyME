@@ -286,10 +286,9 @@ def init_db():
 
         # Configuración por defecto para documentos editoriales y facturación comercial
         defaults_presupuesto = {
-            "serie_defecto": "Factura Nº",
+            "prefijo_factura": "FAC",
+            "serie_defecto": "FAC",
             "numero_inicio_factura": "1",
-            "serie_sin_iva": "Factura Sin IVA Nº",
-            "numero_inicio_factura_sin_iva": "1",
             "presupuesto_instagram": "",
             "presupuesto_email": "",
             "presupuesto_bienvenida_titulo": "Bienvenidos",

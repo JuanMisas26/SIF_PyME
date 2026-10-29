@@ -98,26 +98,14 @@
         <div class="card-body" style="padding: 18px 20px;">
           <div class="form-row">
             <div class="form-group">
-              <label style="font-size: 11px; font-weight: 500; color: var(--mac-text-secondary); text-transform: uppercase;">Serie Facturas Con IVA</label>
-              <input type="text" class="form-control font-mono" name="serie_defecto" id="cfg-serie_defecto" placeholder="Factura Nº">
-              <small style="font-size: 11px; color: var(--mac-text-tertiary); margin-top: 4px; display: block;">Ej: Factura Nº (genera 'Factura Nº 1', 'Factura Nº 2'…)</small>
+              <label style="font-size: 11px; font-weight: 500; color: var(--mac-text-secondary); text-transform: uppercase;">Prefijo de Facturación</label>
+              <input type="text" class="form-control font-mono" name="prefijo_factura" id="cfg-prefijo_factura" placeholder="FAC">
+              <small style="font-size: 11px; color: var(--mac-text-tertiary); margin-top: 4px; display: block;">Formato: [Prefijo]-[AÑO]-[MES]-[DIA]-[ID] (ej: FAC-2026-10-29-001)</small>
             </div>
             <div class="form-group">
-              <label style="font-size: 11px; font-weight: 500; color: var(--mac-text-secondary); text-transform: uppercase;">Nº Inicial (Con IVA)</label>
+              <label style="font-size: 11px; font-weight: 500; color: var(--mac-text-secondary); text-transform: uppercase;">Nº Inicial (ID)</label>
               <input type="number" min="1" step="1" class="form-control font-mono" name="numero_inicio_factura" id="cfg-numero_inicio_factura" placeholder="1">
-              <small style="font-size: 11px; color: var(--mac-text-tertiary); margin-top: 4px; display: block;">Número inicial correlativo para facturas con IVA</small>
-            </div>
-          </div>
-          <div class="form-row mt-3">
-            <div class="form-group">
-              <label style="font-size: 11px; font-weight: 500; color: var(--mac-text-secondary); text-transform: uppercase;">Serie Facturas Sin IVA (Exentas)</label>
-              <input type="text" class="form-control font-mono" name="serie_sin_iva" id="cfg-serie_sin_iva" placeholder="Factura Sin IVA Nº">
-              <small style="font-size: 11px; color: var(--mac-text-tertiary); margin-top: 4px; display: block;">Ej: Factura Sin IVA Nº (genera 'Factura Sin IVA Nº 1', 'Factura Sin IVA Nº 2'…)</small>
-            </div>
-            <div class="form-group">
-              <label style="font-size: 11px; font-weight: 500; color: var(--mac-text-secondary); text-transform: uppercase;">Nº Inicial (Sin IVA)</label>
-              <input type="number" min="1" step="1" class="form-control font-mono" name="numero_inicio_factura_sin_iva" id="cfg-numero_inicio_factura_sin_iva" placeholder="1">
-              <small style="font-size: 11px; color: var(--mac-text-tertiary); margin-top: 4px; display: block;">Número inicial correlativo para facturas sin IVA</small>
+              <small style="font-size: 11px; color: var(--mac-text-tertiary); margin-top: 4px; display: block;">Número inicial correlativo (por defecto 1)</small>
             </div>
           </div>
           <div class="form-row mt-3">
@@ -347,14 +335,10 @@ async function cargarConfiguracion() {
     document.getElementById('cfg-email').value = d.email || '';
     document.getElementById('cfg-web').value = d.web || '';
     document.getElementById('cfg-iban').value = d.iban || '';
-    const elSerie = document.getElementById('cfg-serie_defecto');
-    if (elSerie) elSerie.value = d.serie_defecto || 'Factura Nº';
+    const elPrefijo = document.getElementById('cfg-prefijo_factura');
+    if (elPrefijo) elPrefijo.value = d.prefijo_factura || d.serie_defecto || 'FAC';
     const elInicio = document.getElementById('cfg-numero_inicio_factura');
     if (elInicio) elInicio.value = d.numero_inicio_factura !== undefined ? d.numero_inicio_factura : 1;
-    const elSerieSinIva = document.getElementById('cfg-serie_sin_iva');
-    if (elSerieSinIva) elSerieSinIva.value = d.serie_sin_iva || 'Factura Sin IVA Nº';
-    const elInicioSinIva = document.getElementById('cfg-numero_inicio_factura_sin_iva');
-    if (elInicioSinIva) elInicioSinIva.value = d.numero_inicio_factura_sin_iva !== undefined ? d.numero_inicio_factura_sin_iva : 1;
     document.getElementById('cfg-iva_defecto').value = d.iva_defecto !== undefined ? d.iva_defecto : 21.0;
     document.getElementById('cfg-irpf_defecto').value = d.irpf_defecto !== undefined ? d.irpf_defecto : 0.0;
     if (document.getElementById('cfg-pdf_storage_dir')) {
@@ -435,10 +419,9 @@ async function guardarConfiguracion() {
     email: document.getElementById('cfg-email') ? document.getElementById('cfg-email').value.trim() : '',
     web: document.getElementById('cfg-web') ? document.getElementById('cfg-web').value.trim() : '',
     iban: document.getElementById('cfg-iban') ? document.getElementById('cfg-iban').value.trim() : '',
-    serie_defecto: (document.getElementById('cfg-serie_defecto') && document.getElementById('cfg-serie_defecto').value.trim()) || 'Factura Nº',
+    prefijo_factura: (document.getElementById('cfg-prefijo_factura') && document.getElementById('cfg-prefijo_factura').value.trim()) || 'FAC',
+    serie_defecto: (document.getElementById('cfg-prefijo_factura') && document.getElementById('cfg-prefijo_factura').value.trim()) || 'FAC',
     numero_inicio_factura: parseInt(document.getElementById('cfg-numero_inicio_factura')?.value, 10) || 1,
-    serie_sin_iva: (document.getElementById('cfg-serie_sin_iva') && document.getElementById('cfg-serie_sin_iva').value.trim()) || 'Factura Sin IVA Nº',
-    numero_inicio_factura_sin_iva: parseInt(document.getElementById('cfg-numero_inicio_factura_sin_iva')?.value, 10) || 1,
     iva_defecto: parseFloat(document.getElementById('cfg-iva_defecto')?.value) || 21.0,
     irpf_defecto: parseFloat(document.getElementById('cfg-irpf_defecto')?.value) || 0.0,
     pdf_storage_dir: document.getElementById('cfg-pdf_storage_dir') ? document.getElementById('cfg-pdf_storage_dir').value.trim() : ''

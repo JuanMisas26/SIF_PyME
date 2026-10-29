@@ -213,36 +213,20 @@ def restaurar_version_factura(factura_id: int, numero_version: int) -> dict[str,
         serie_version_snap = f_data.get("serie")
         correlativo_version_snap = f_data.get("correlativo")
 
-        if cambio_regimen:
-            # Comprobar si el número original de la versión a restaurar ya tenía la serie correcta
-            serie_esperada = (config.get("serie_sin_iva") or "Factura Sin IVA Nº") if nuevo_sin_iva else (config.get("serie_defecto") or "Factura Nº")
-            
-            # Si el snapshot tenía un número de esa serie y no colisiona con otra factura distinta
-            usar_snap_num = False
-            if numero_version_snap and serie_version_snap == serie_esperada:
-                colision = cursor.execute(
-                    "SELECT id FROM facturas WHERE numero_factura = ? AND id != ?",
-                    (numero_version_snap, factura_id)
-                ).fetchone()
-                if not colision:
-                    usar_snap_num = True
+        # Numeración unificada: mantenemos el número actual o recuperamos el del snapshot si no colisiona
+        nuevo_numero = factura_actual["numero_factura"]
+        nueva_serie = factura_actual["serie"]
+        nuevo_correlativo = factura_actual["correlativo"]
 
-            if usar_snap_num:
+        if numero_version_snap and numero_version_snap != nuevo_numero:
+            colision = cursor.execute(
+                "SELECT id FROM facturas WHERE numero_factura = ? AND id != ?",
+                (numero_version_snap, factura_id)
+            ).fetchone()
+            if not colision:
                 nuevo_numero = numero_version_snap
                 nueva_serie = serie_version_snap
                 nuevo_correlativo = correlativo_version_snap
-            else:
-                nuevo_numero, nuevo_correlativo = generar_numero_factura(
-                    conn,
-                    serie=serie_esperada,
-                    fecha=fecha_emision,
-                    sin_iva=nuevo_sin_iva
-                )
-                nueva_serie = serie_esperada
-        else:
-            # Mismo régimen: mantenemos el número actual de la factura a menos que sea necesario
-            nuevo_numero = factura_actual["numero_factura"]
-            nueva_serie = factura_actual["serie"]
             nuevo_correlativo = factura_actual["correlativo"]
 
         # 4. Actualizar cabecera de la factura en BD

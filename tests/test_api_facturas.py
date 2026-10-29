@@ -640,15 +640,12 @@ def test_get_pdf_output_path_formato_mes_y_trimestre():
         assert "2026" in path.parts
         assert trimestre_esperado in path.parts
         assert mes_esperado in path.parts
-        assert "Con_IVA" in path.parts
+        assert "Con_IVA" not in path.parts
+        assert "Sin_IVA" not in path.parts
         assert path.name == "FAC-TEST-MES.pdf"
 
         path_sin = get_pdf_output_path("FAC-TEST-MES", fecha_str, sin_iva=True)
-        assert "2026" in path_sin.parts
-        assert trimestre_esperado in path_sin.parts
-        assert mes_esperado in path_sin.parts
-        assert "Sin_IVA" in path_sin.parts
-        assert path_sin.name == "FAC-TEST-MES.pdf"
+        assert path_sin == path
 
 
 def test_get_pdf_output_path_migracion_automatica_ruta_antigua(tmp_path, monkeypatch):

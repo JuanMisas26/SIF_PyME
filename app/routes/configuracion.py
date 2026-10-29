@@ -81,10 +81,11 @@ def obtener_configuracion():
         email=config_raw.get("email", ""),
         web=config_raw.get("web", ""),
         iban=config_raw.get("iban", ""),
-        serie_defecto=config_raw.get("serie_defecto", "Factura Nº"),
+        prefijo_factura=(config_raw.get("prefijo_factura") or config_raw.get("serie_defecto") or "FAC").strip().rstrip('-/'),
+        serie_defecto=(config_raw.get("prefijo_factura") or config_raw.get("serie_defecto") or "FAC").strip().rstrip('-/'),
         numero_inicio_factura=int(config_raw.get("numero_inicio_factura", 1)) if (config_raw.get("numero_inicio_factura") and str(config_raw.get("numero_inicio_factura")).isdigit()) else 1,
-        serie_sin_iva=config_raw.get("serie_sin_iva", "Factura Sin IVA Nº"),
-        numero_inicio_factura_sin_iva=int(config_raw.get("numero_inicio_factura_sin_iva", 1)) if (config_raw.get("numero_inicio_factura_sin_iva") and str(config_raw.get("numero_inicio_factura_sin_iva")).isdigit()) else 1,
+        serie_sin_iva=None,
+        numero_inicio_factura_sin_iva=None,
         iva_defecto=iva,
         irpf_defecto=irpf,
         presupuesto_instagram=config_raw.get("presupuesto_instagram", os.getenv("DEFAULT_PRESUPUESTO_INSTAGRAM", "")),
@@ -122,6 +123,10 @@ def obtener_configuracion():
 @router.post("/configuracion", response_model=ConfiguracionResponse)
 def guardar_configuracion(config_in: ConfiguracionData):
     """Guarda o actualiza la configuración del emisor y parámetros."""
+    prefijo_in = config_in.prefijo_factura or config_in.serie_defecto or "FAC"
+    prefijo_clean = str(prefijo_in).strip().rstrip('-/') or "FAC"
+    numero_inicio = str(config_in.numero_inicio_factura if config_in.numero_inicio_factura and config_in.numero_inicio_factura >= 1 else 1)
+
     valores = {
         "nombre": config_in.nombre or "",
         "nif": config_in.nif or "",
@@ -133,10 +138,9 @@ def guardar_configuracion(config_in: ConfiguracionData):
         "email": config_in.email or "",
         "web": config_in.web or "",
         "iban": config_in.iban or "",
-        "serie_defecto": config_in.serie_defecto or "Factura Nº",
-        "numero_inicio_factura": str(config_in.numero_inicio_factura if config_in.numero_inicio_factura and config_in.numero_inicio_factura >= 1 else 1),
-        "serie_sin_iva": config_in.serie_sin_iva or "Factura Sin IVA Nº",
-        "numero_inicio_factura_sin_iva": str(config_in.numero_inicio_factura_sin_iva if config_in.numero_inicio_factura_sin_iva and config_in.numero_inicio_factura_sin_iva >= 1 else 1),
+        "prefijo_factura": prefijo_clean,
+        "serie_defecto": prefijo_clean,
+        "numero_inicio_factura": numero_inicio,
         "iva_defecto": str(config_in.iva_defecto if config_in.iva_defecto is not None else 21.0),
         "irpf_defecto": str(config_in.irpf_defecto if config_in.irpf_defecto is not None else 0.0),
         "presupuesto_instagram": config_in.presupuesto_instagram or "",

@@ -854,10 +854,8 @@ def convertir_presupuesto_a_factura(id: int, req: PresupuestoConvertirFacturaReq
 
     if req.serie:
         serie = req.serie
-    elif sin_iva_flag:
-        serie = config.get("serie_sin_iva") or "Factura Sin IVA Nº"
     else:
-        serie = config.get("serie_defecto") or "Factura Nº"
+        serie = config.get("prefijo_factura") or config.get("serie_defecto") or "FAC"
 
     with db_connection() as conn:
         numero_factura, correlativo = generar_numero_factura(

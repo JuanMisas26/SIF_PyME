@@ -95,19 +95,35 @@ def calcular_totales_factura(lineas: list[dict[str, Any]]) -> dict[str, Any]:
     }
 
 
-def formatear_numero_factura(serie: str, correlativo: int) -> str:
+def parse_fecha(fecha: Optional[Any]) -> date:
+    """Helper para normalizar una fecha o cadena ISO a objeto date."""
+    if fecha is None:
+        return date.today()
+    if isinstance(fecha, str):
+        try:
+            return datetime.strptime(fecha.split('T')[0].strip(), '%Y-%m-%d').date()
+        except Exception:
+            return date.today()
+    if isinstance(fecha, datetime):
+        return fecha.date()
+    if isinstance(fecha, date):
+        return fecha
+    return date.today()
+
+
+def formatear_numero_factura(serie: str, correlativo: int, fecha: Optional[Any] = None) -> str:
     """
-    Formatea el número oficial de la factura según la serie y el correlativo.
-    Por defecto genera: 'Factura Nº [numero]'.
-    Si la serie incluye delimitadores (como '-' o '/'), concatena directamente.
+    Formatea el número oficial de la factura según el estándar:
+    [Prefijo]-[AÑO]-[MES]-[DIA]-[ID]
+
+    El prefijo se limpia de guiones o barras finales.
+    El ID se formatea con al menos 3 dígitos correlativos (ej: 001, 002, 010, 100).
     """
-    s = (serie or "Factura Nº").strip()
-    if s.endswith(('-', '/', ' ')):
-        return f"{s}{correlativo}"
-    elif "nº" in s.lower() or "n°" in s.lower():
-        return f"{s} {correlativo}"
-    else:
-        return f"{s}-{correlativo}"
+    p = (serie or "FAC").strip().rstrip('-/')
+    if not p or p in ('Factura Nº', 'Factura Sin IVA Nº'):
+        p = "FAC"
+    f = parse_fecha(fecha)
+    return f"{p}-{f.year:04d}-{f.month:02d}-{f.day:02d}-{correlativo:03d}"
 
 
 def generar_numero_factura(
@@ -116,36 +132,41 @@ def generar_numero_factura(
     fecha: Optional[Any] = None,
     sin_iva: bool = False
 ) -> tuple[str, int]:
-    """Genera el siguiente número correlativo de factura de forma configurable.
+    """Genera el siguiente número de factura con formato unificado:
+    [Prefijo configurable desde config]-[AÑO]-[MES]-[DIA]-[ID]
 
-    Por defecto:
-    - Facturas con IVA: serie 'Factura Nº', comenzando en 'numero_inicio_factura' (1 por defecto).
-    - Facturas sin IVA: serie 'Factura Sin IVA Nº', comenzando en 'numero_inicio_factura_sin_iva' (1 por defecto).
-    Garantiza secuencias correlativas independientes y unicidad absoluta contra cualquier factura existente o borrada.
+    Elimina la numeración diferenciada entre facturas con o sin IVA.
+    Garantiza secuencias correlativas únicas contra cualquier factura existente o borrada.
     """
     cursor = conn.cursor()
+    f = parse_fecha(fecha)
+    fecha_str = f"{f.year:04d}-{f.month:02d}-{f.day:02d}"
 
-    clave_serie = "serie_sin_iva" if sin_iva else "serie_defecto"
-    default_serie = "Factura Sin IVA Nº" if sin_iva else "Factura Nº"
+    # 1. Determinar prefijo configurable
+    prefijo = None
+    if serie and str(serie).strip() and str(serie).strip() not in ('Factura Nº', 'Factura Sin IVA Nº'):
+        prefijo = str(serie).strip().rstrip('-/')
 
-    # 1. Determinar serie/prefijo
-    if not serie or not str(serie).strip() or str(serie).strip() in ('FAC-2026', 'FAC'):
+    if not prefijo:
         try:
-            cfg_row = cursor.execute("SELECT valor FROM configuracion WHERE clave = ?", (clave_serie,)).fetchone()
-            if cfg_row and cfg_row[0] and cfg_row[0].strip() and cfg_row[0].strip() not in ('FAC-2026', 'FAC'):
-                serie = cfg_row[0].strip()
-            else:
-                serie = default_serie
+            cfg_row = cursor.execute(
+                """SELECT valor FROM configuracion
+                   WHERE clave IN ('prefijo_factura', 'serie_defecto')
+                     AND valor IS NOT NULL AND valor != ''
+                   ORDER BY CASE WHEN clave = 'prefijo_factura' THEN 1 ELSE 2 END"""
+            ).fetchone()
+            if cfg_row and cfg_row[0] and cfg_row[0].strip() and cfg_row[0].strip() not in ('Factura Nº', 'Factura Sin IVA Nº'):
+                prefijo = cfg_row[0].strip().rstrip('-/')
         except Exception:
-            serie = default_serie
-    else:
-        serie = str(serie).strip()
+            pass
 
-    # 2. Obtener número de inicio configurado según si es con o sin IVA
-    clave_inicio = "numero_inicio_factura_sin_iva" if sin_iva else "numero_inicio_factura"
+    if not prefijo:
+        prefijo = "FAC"
+
+    # 2. Obtener número de inicio configurado si existe
     numero_inicio = 1
     try:
-        cfg_ini = cursor.execute("SELECT valor FROM configuracion WHERE clave = ?", (clave_inicio,)).fetchone()
+        cfg_ini = cursor.execute("SELECT valor FROM configuracion WHERE clave = 'numero_inicio_factura'").fetchone()
         if cfg_ini and cfg_ini[0]:
             v_int = int(str(cfg_ini[0]).strip())
             if v_int >= 1:
@@ -153,21 +174,35 @@ def generar_numero_factura(
     except Exception:
         numero_inicio = 1
 
-    # 3. Buscar el correlativo máximo existente para esta serie
+    # 3. Buscar el correlativo máximo existente para este prefijo y fecha
+    prefix_full = f"{prefijo}-{fecha_str}-"
+    max_id = 0
     try:
-        row = cursor.execute(
-            "SELECT MAX(correlativo) as max_corr FROM facturas WHERE serie = ?",
-            (serie,)
-        ).fetchone()
-        max_corr = row['max_corr'] if (row and row['max_corr'] is not None) else 0
+        rows = cursor.execute(
+            "SELECT numero_factura, correlativo FROM facturas WHERE numero_factura LIKE ?",
+            (f"{prefix_full}%",)
+        ).fetchall()
+        for r in rows:
+            num = str(r['numero_factura'] or '').strip()
+            if num.startswith(prefix_full):
+                suffix = num[len(prefix_full):]
+                if suffix.isdigit():
+                    max_id = max(max_id, int(suffix))
+            if r['correlativo'] is not None:
+                try:
+                    c_val = int(r['correlativo'])
+                    if c_val > max_id:
+                        max_id = c_val
+                except Exception:
+                    pass
     except Exception:
-        max_corr = 0
+        max_id = 0
 
-    correlativo = max(max_corr + 1, numero_inicio)
+    correlativo = max(max_id + 1, numero_inicio)
 
     # 4. Asegurar unicidad absoluta contra cualquier factura existente o borrada
     while True:
-        numero = formatear_numero_factura(serie, correlativo)
+        numero = f"{prefix_full}{correlativo:03d}"
         exists = cursor.execute(
             "SELECT 1 FROM facturas WHERE numero_factura = ?",
             (numero,)
@@ -186,7 +221,7 @@ NOMBRES_MESES = [
 
 
 def get_pdf_output_path(numero_factura: str, fecha_emision, sin_iva: bool = False) -> Path:
-    """Get organized PDF output path: ~/Facturas/PDFs/{YEAR}/{QUARTER}/{MONTH_NUM}_{MONTH_NAME}/{Con_IVA|Sin_IVA}/"""
+    """Get organized PDF output path: ~/Facturas/PDFs/{YEAR}/{QUARTER}/{MONTH_NUM}_{MONTH_NAME}/"""
     if isinstance(fecha_emision, str):
         fecha = datetime.strptime(fecha_emision, '%Y-%m-%d').date()
     elif isinstance(fecha_emision, date):
@@ -198,48 +233,32 @@ def get_pdf_output_path(numero_factura: str, fecha_emision, sin_iva: bool = Fals
     trimestre = f"{(fecha.month - 1) // 3 + 1}T"
     nombre_mes = NOMBRES_MESES[fecha.month - 1]
     month_folder = f"{fecha.month:02d}_{nombre_mes}"
-    iva_folder = "Sin_IVA" if sin_iva else "Con_IVA"
-    iva_dir = base_dir / str(fecha.year) / trimestre / month_folder / iva_folder
-    iva_dir.mkdir(parents=True, exist_ok=True)
+    month_dir = base_dir / str(fecha.year) / trimestre / month_folder
+    month_dir.mkdir(parents=True, exist_ok=True)
     filename = f"{numero_factura.replace('/', '-')}.pdf"
-    new_path = iva_dir / filename
+    new_path = month_dir / filename
 
-    # 1. Si existía en la carpeta del régimen opuesto (p. ej. si se cambió el flag sin_iva al editar)
-    other_iva_folder = "Con_IVA" if sin_iva else "Sin_IVA"
-    other_iva_path = base_dir / str(fecha.year) / trimestre / month_folder / other_iva_folder / filename
-    if other_iva_path.exists():
-        try:
-            import shutil
-            if not new_path.exists():
-                shutil.move(str(other_iva_path), str(new_path))
-            else:
-                other_iva_path.unlink()
-            if other_iva_path.parent.exists() and not any(other_iva_path.parent.iterdir()):
-                other_iva_path.parent.rmdir()
-        except Exception:
-            pass
-
-    # 2. Compatibilidad con archivos previamente guardados en rutas anteriores sin subcarpeta de IVA:
-    # a. Directamente en el mes: {YEAR}/{TRIMESTRE}/{MONTH_NUM}_{MONTH_NAME}/
-    legacy_path_in_month = base_dir / str(fecha.year) / trimestre / month_folder / filename
-    # b. Ruta sin trimestre: {YEAR}/{MONTH_NUM}_{MONTH_NAME}/
+    # Compatibilidad y migración automática desde subcarpetas previas (Con_IVA, Sin_IVA u otras rutas antiguas)
+    legacy_con = month_dir / "Con_IVA" / filename
+    legacy_sin = month_dir / "Sin_IVA" / filename
     old_path_no_trim = base_dir / str(fecha.year) / month_folder / filename
-    # c. Ruta antigua inicial: {YEAR}/{MONTH:02d}/
     old_path_raw_month = base_dir / str(fecha.year) / f"{fecha.month:02d}" / filename
 
-    for old_path in (legacy_path_in_month, old_path_no_trim, old_path_raw_month):
-        if old_path.exists() and not new_path.exists():
+    for old_path in (legacy_con, legacy_sin, old_path_no_trim, old_path_raw_month):
+        if old_path.exists():
             try:
                 import shutil
-                shutil.move(str(old_path), str(new_path))
-                # Limpiar directorio anterior si quedó vacío
+                if not new_path.exists():
+                    shutil.move(str(old_path), str(new_path))
+                else:
+                    old_path.unlink()
+                # Limpiar directorio si quedó vacío
                 curr = old_path.parent
                 while curr != base_dir and curr.exists() and not any(curr.iterdir()):
                     curr.rmdir()
                     curr = curr.parent
-                break
             except Exception:
-                return old_path
+                pass
 
     return new_path
 

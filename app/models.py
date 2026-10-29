@@ -433,10 +433,11 @@ class ConfiguracionData(BaseModel):
     email: Optional[str] = ""
     web: Optional[str] = ""
     iban: Optional[str] = ""
-    serie_defecto: Optional[str] = "Factura Nº"
+    prefijo_factura: Optional[str] = "FAC"
+    serie_defecto: Optional[str] = "FAC"
     numero_inicio_factura: Optional[int] = Field(default=1, ge=1, description="Número correlativo de inicio de facturación")
-    serie_sin_iva: Optional[str] = "Factura Sin IVA Nº"
-    numero_inicio_factura_sin_iva: Optional[int] = Field(default=1, ge=1, description="Número correlativo de inicio para facturas sin IVA")
+    serie_sin_iva: Optional[str] = None
+    numero_inicio_factura_sin_iva: Optional[int] = None
     iva_defecto: Optional[float] = Field(default=21.0, ge=0.0, le=100.0)
     irpf_defecto: Optional[float] = Field(default=0.0, ge=0.0, le=100.0)
     # Textos editoriales y de proceso configurables

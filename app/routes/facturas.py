@@ -180,15 +180,13 @@ def crear_factura(factura: FacturaCreate):
         totales = calcular_totales_factura(lineas_data)
         sin_iva_flag = 1 if (es_sin_iva or totales['iva_total'] == 0) else 0
 
-        # Generar número correlativo diferenciado según régimen de IVA (con IVA o sin IVA)
-        if sin_iva_flag:
-            serie = config.get("serie_sin_iva") or "Factura Sin IVA Nº"
-        else:
-            serie = config.get("serie_defecto") or "Factura Nº"
+        # Obtener prefijo configurable unificado para facturación: [Prefijo]-[AÑO]-[MES]-[DIA]-[ID]
+        prefijo = config.get("prefijo_factura") or config.get("serie_defecto") or "FAC"
+        serie = prefijo
 
         numero_factura, correlativo = generar_numero_factura(
             conn,
-            serie=serie,
+            serie=prefijo,
             fecha=factura.fecha_emision,
             sin_iva=bool(sin_iva_flag)
         )
@@ -439,22 +437,10 @@ def actualizar_factura(factura_id: int, data: FacturaUpdateFull):
         cambio_regimen = (antiguo_sin_iva != nuevo_sin_iva)
 
         config = get_configuracion()
-        if cambio_regimen:
-            if nuevo_sin_iva:
-                nueva_serie = config.get("serie_sin_iva") or "Factura Sin IVA Nº"
-            else:
-                nueva_serie = config.get("serie_defecto") or "Factura Nº"
-
-            nuevo_numero, nuevo_correlativo = generar_numero_factura(
-                conn,
-                serie=nueva_serie,
-                fecha=fecha_emision,
-                sin_iva=bool(nuevo_sin_iva)
-            )
-        else:
-            nuevo_numero = factura_existente['numero_factura']
-            nueva_serie = factura_existente['serie']
-            nuevo_correlativo = factura_existente['correlativo']
+        # Numeración unificada: mantener número oficial existente
+        nuevo_numero = factura_existente['numero_factura']
+        nueva_serie = factura_existente['serie']
+        nuevo_correlativo = factura_existente['correlativo']
 
         desc_id = data.descuento_id if data.descuento_id is not None else factura_existente['descuento_id']
         desc_nom = data.descuento_nombre if data.descuento_nombre is not None else factura_existente['descuento_nombre']
