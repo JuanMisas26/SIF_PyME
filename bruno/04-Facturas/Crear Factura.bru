@@ -1,0 +1,38 @@
+meta {
+  name: Crear Factura
+  type: http
+  seq: 3
+}
+
+post {
+  url: {{baseUrl}}/api/facturas
+  body: json
+  auth: none
+}
+
+body:json {
+  {
+    "cliente_id": 1,
+    "fecha_emision": "2026-10-21",
+    "fecha_vencimiento": "2026-11-21",
+    "observaciones": "Entrega en taller",
+    "lineas": [
+      {
+        "descripcion": "Tarjetón invitación con ilustración",
+        "detalle_material": "A5 Papel 300 gr verjurado premium",
+        "cantidad": 100,
+        "precio_unitario": 1.85,
+        "porcentaje_iva": 21.0,
+        "porcentaje_irpf": 0.0
+      },
+      {
+        "descripcion": "Sobre artesanal",
+        "detalle_material": "C5 Papel artesanal Verde Oliva",
+        "cantidad": 100,
+        "precio_unitario": 1.50,
+        "porcentaje_iva": 21.0,
+        "porcentaje_irpf": 0.0
+      }
+    ]
+  }
+}

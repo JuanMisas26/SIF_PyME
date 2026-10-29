@@ -1,0 +1,22 @@
+meta {
+  name: Actualizar Configuración Presupuestos
+  type: http
+  seq: 4
+}
+
+put {
+  url: {{baseUrl}}/api/configuracion/presupuesto
+  body: json
+  auth: none
+}
+
+body:json {
+  {
+    "presupuesto_instagram": "@martamisasdesign",
+    "presupuesto_email": "martamisashiguera@gmail.com",
+    "presupuesto_bienvenida_titulo": "Bienvenidos",
+    "presupuesto_bienvenida_subtitulo": "Al proceso creativo de vuestras invitaciones",
+    "presupuesto_proceso_titulo": "Proceso creativo",
+    "presupuesto_proceso_subtitulo": "Tiempos de producción de vuestras invitaciones"
+  }
+}

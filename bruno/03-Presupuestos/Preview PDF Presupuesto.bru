@@ -1,0 +1,36 @@
+meta {
+  name: Preview PDF Presupuesto
+  type: http
+  seq: 10
+}
+
+post {
+  url: {{baseUrl}}/api/presupuestos/preview-pdf
+  body: json
+  auth: none
+}
+
+body:json {
+  {
+    "numero_presupuesto": "PRE-PREVIEW",
+    "cliente_id": 1,
+    "fecha": "2026-10-28",
+    "titulo": "Propuesta Borrador",
+    "subtitulo": "Condiciones Comerciales",
+    "opciones": [
+      {
+        "nombre_opcion": "Opción A",
+        "descripcion": "Acabado básico",
+        "lineas": [
+          {
+            "descripcion": "Consultoría y Desarrollo",
+            "cantidad": 1,
+            "precio_unitario": 500.0,
+            "porcentaje_iva": 21.0
+          }
+        ]
+      }
+    ]
+  }
+}
+

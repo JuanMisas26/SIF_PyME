@@ -1,0 +1,23 @@
+meta {
+  name: Actualizar Descuento
+  type: http
+  seq: 4
+}
+
+put {
+  url: {{baseUrl}}/api/descuentos/1
+  body: json
+  auth: none
+}
+
+body:json {
+  {
+    "nombre": "Descuento Promocional 15%",
+    "descripcion": "Campaña ampliada de fidelización",
+    "tipo": "porcentaje",
+    "valor": 15.0,
+    "aplica_a": "todos",
+    "producto_ids": []
+  }
+}
+

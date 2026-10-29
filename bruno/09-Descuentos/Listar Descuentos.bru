@@ -1,0 +1,12 @@
+meta {
+  name: Listar Descuentos
+  type: http
+  seq: 1
+}
+
+get {
+  url: {{baseUrl}}/api/descuentos?paginated=true&page=1&page_size=20
+  body: none
+  auth: none
+}
+

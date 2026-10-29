@@ -1,0 +1,133 @@
+{% extends "base.html" %}
+{% block title %}Clientes — SIF PyME macOS{% endblock %}
+
+{% block content %}
+<main class="main-content" style="padding: 0; display: flex; flex-direction: column; flex: 1; min-height: 0;">
+  
+  <!-- Sub-barra de acciones nativa macOS -->
+  <div class="filter-bar">
+    <div class="filter-group">
+      <span class="filter-label" style="font-weight: 600; color: var(--mac-text-primary);">Clientes</span>
+      <span class="filter-label" style="color: var(--mac-text-tertiary);">•</span>
+      <span class="filter-label" style="color: var(--mac-text-secondary);">Directorio de clientes registrados</span>
+    </div>
+
+    <div class="filter-group">
+      <div class="search-field">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="11" cy="11" r="8"></circle>
+          <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+        </svg>
+        <input type="text" class="search-input" id="filter-search-cliente" placeholder="Buscar por nombre o NIF…" style="width: 220px;" aria-label="Buscar clientes">
+      </div>
+      <button class="btn-native btn-primary" id="btn-nuevo-cliente" type="button">
+        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
+          <line x1="12" y1="5" x2="12" y2="19"></line>
+          <line x1="5" y1="12" x2="19" y2="12"></line>
+        </svg>
+        Nuevo Cliente…
+      </button>
+    </div>
+  </div>
+
+  <!-- Tabla de Clientes Estilo macOS (NSTableView) -->
+  <div class="table-container">
+    <table class="mac-table">
+      <thead>
+        <tr>
+          <th>NIF / CIF</th>
+          <th>Nombre o Razón Social</th>
+          <th class="hide-mobile">Teléfono</th>
+          <th class="hide-mobile">Ciudad</th>
+          <th class="hide-mobile">Email</th>
+          <th class="hide-mobile">Forma de Pago</th>
+          <th style="text-align: right;">Acciones</th>
+        </tr>
+      </thead>
+      <tbody id="clientes-tbody">
+        <tr>
+          <td colspan="7" style="text-align: center; padding: 40px; color: var(--mac-text-tertiary);">
+            Cargando directorio de clientes…
+          </td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+</main>
+
+<!-- Modal Nativo Estilo macOS Sheet (NSPanel) -->
+<div class="modal-overlay" id="cliente-modal">
+  <div class="modal" style="max-width: 560px; border-radius: 10px; box-shadow: 0 20px 60px rgba(0,0,0,0.22); border: 1px solid rgba(0,0,0,0.18);">
+    <div class="modal-header" style="height: 44px; padding: 0 16px; background: #F8F8F9; border-bottom: 1px solid var(--mac-separator);">
+      <h3 class="modal-title" id="modal-cliente-title" style="font-size: 13px; font-weight: 600;">Nuevo Cliente</h3>
+      <button class="btn-icon" id="btn-close-cliente-modal" type="button" title="Cerrar">✕</button>
+    </div>
+    <div class="modal-body" style="padding: 18px 20px;">
+      <form id="form-cliente" novalidate>
+        <div id="cliente-modal-alert" class="hidden mb-3" style="background: #FFF2F2; color: var(--mac-system-red); padding: 8px 12px; border-radius: 6px; font-size: 12px; border: 1px solid rgba(255,59,48,0.2);"></div>
+
+        <div class="form-row">
+          <div class="form-group">
+            <label style="font-size: 11px; font-weight: 500; color: var(--mac-text-secondary); text-transform: uppercase;">Nombre o Razón Social *</label>
+            <input type="text" class="form-control" name="razon_social" required placeholder="Ej. Jana Fernández S.L.">
+          </div>
+          <div class="form-group">
+            <label style="font-size: 11px; font-weight: 500; color: var(--mac-text-secondary); text-transform: uppercase;">NIF / CIF</label>
+            <input type="text" class="form-control font-mono" name="nif_cif" placeholder="B12345678">
+          </div>
+        </div>
+        <div class="form-row mt-2">
+          <div class="form-group">
+            <label style="font-size: 11px; font-weight: 500; color: var(--mac-text-secondary); text-transform: uppercase;">Teléfono de Contacto</label>
+            <input type="tel" class="form-control" name="telefono" placeholder="+34 600 000 000">
+          </div>
+          <div class="form-group">
+            <label style="font-size: 11px; font-weight: 500; color: var(--mac-text-secondary); text-transform: uppercase;">Email</label>
+            <input type="email" class="form-control" name="email" placeholder="contacto@cliente.com">
+          </div>
+        </div>
+        <div class="form-group mt-2">
+          <label style="font-size: 11px; font-weight: 500; color: var(--mac-text-secondary); text-transform: uppercase;">Dirección Fiscal</label>
+          <input type="text" class="form-control" name="direccion" placeholder="Calle Mayor, 1">
+        </div>
+        <div class="form-row mt-2">
+          <div class="form-group">
+            <label style="font-size: 11px; font-weight: 500; color: var(--mac-text-secondary); text-transform: uppercase;">Código Postal</label>
+            <input type="text" class="form-control" name="codigo_postal" placeholder="28001">
+          </div>
+          <div class="form-group">
+            <label style="font-size: 11px; font-weight: 500; color: var(--mac-text-secondary); text-transform: uppercase;">Ciudad</label>
+            <input type="text" class="form-control" name="ciudad" placeholder="Madrid">
+          </div>
+          <div class="form-group">
+            <label style="font-size: 11px; font-weight: 500; color: var(--mac-text-secondary); text-transform: uppercase;">Provincia</label>
+            <input type="text" class="form-control" name="provincia" placeholder="Madrid">
+          </div>
+        </div>
+        <div class="form-group mt-2">
+          <label style="font-size: 11px; font-weight: 500; color: var(--mac-text-secondary); text-transform: uppercase;">Forma de Pago Predeterminada</label>
+          <select class="native-select" name="forma_pago_defecto" style="width: 100%;">
+            <option>Transferencia bancaria</option>
+            <option>Efectivo</option>
+            <option>Bizum</option>
+          </select>
+        </div>
+        <div class="modal-footer" style="padding-top: 18px; margin-top: 16px; border-top: 1px solid var(--mac-separator-subtle); display: flex; justify-content: flex-end; gap: 8px;">
+          <button type="button" class="btn-native" id="btn-cancel-cliente-modal">Cancelar</button>
+          <button type="submit" class="btn-native btn-primary" id="btn-submit-cliente">Guardar Cliente</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block statusbar %}
+<footer class="mac-statusbar">
+  <div class="statusbar-item">
+    <span id="status-clientes-count">Cargando clientes...</span>
+  </div>
+  <div class="statusbar-item" id="clientes-pagination-container">
+  </div>
+</footer>
+{% endblock %}

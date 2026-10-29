@@ -1,0 +1,23 @@
+meta {
+  name: Crear Descuento
+  type: http
+  seq: 2
+}
+
+post {
+  url: {{baseUrl}}/api/descuentos
+  body: json
+  auth: none
+}
+
+body:json {
+  {
+    "nombre": "Descuento Promocional 10%",
+    "descripcion": "Campaña de fidelización anual",
+    "tipo": "porcentaje",
+    "valor": 10.0,
+    "aplica_a": "todos",
+    "producto_ids": []
+  }
+}
+

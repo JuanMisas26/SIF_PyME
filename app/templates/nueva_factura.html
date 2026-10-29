@@ -1,0 +1,338 @@
+{% extends "base.html" %}
+{% block title %}{{ "Editar Factura" if factura_id else "Nueva Factura" }} — SIF PyME macOS{% endblock %}
+
+{% block content %}
+<script>
+  window.FACTURA_EDITING_ID = {{ factura_id | tojson }};
+</script>
+<main class="main-content" style="padding: 0; display: flex; flex-direction: column; flex: 1; min-height: 0; overflow-y: auto;">
+  
+  <!-- Sub-barra de acciones nativa macOS -->
+  <div class="filter-bar">
+    <div class="filter-group">
+      <span class="filter-label" style="font-weight: 600; color: var(--mac-text-primary);">{{ "Editar Factura" if factura_id else "Nueva Factura" }}</span>
+      <span class="filter-label" style="color: var(--mac-text-tertiary);">•</span>
+      <span class="filter-label" style="color: var(--mac-text-secondary);">{{ "Modificación de factura oficial y regeneración de documento" if factura_id else "Emisión y generación de documento oficial" }}</span>
+    </div>
+
+    <div class="filter-group">
+      <a href="/" class="btn-native">Volver a Facturas</a>
+      {% if factura_id %}
+      <a href="/api/facturas/{{ factura_id }}/pdf" target="_blank" class="btn-native" id="btn-preview-factura">
+        Vista Previa PDF
+      </a>
+      {% endif %}
+      <button type="submit" form="form-nueva-factura" class="btn-native btn-primary" id="btn-emitir">
+        {{ "Guardar Cambios y Descargar PDF" if factura_id else "Emitir Factura y Descargar PDF" }}
+      </button>
+    </div>
+  </div>
+
+  <div style="padding: 24px 24px 220px 24px; max-width: 1200px; margin: 0 auto; width: 100%;">
+    <form id="form-nueva-factura" novalidate>
+      <input type="hidden" id="cliente_id" name="cliente_id">
+
+      <div id="nueva-factura-config-warning" class="hidden mb-3" style="background: #FFF2F2; border: 1px solid rgba(255,59,48,0.25); color: var(--mac-system-red); padding: 12px 16px; border-radius: 6px; display: flex; align-items: center; justify-content: space-between; gap: 16px;">
+        <div style="font-size: 12px;">
+          <strong>Emisión bloqueada:</strong> No se han configurado los datos fiscales del emisor (Razón social y NIF/CIF).
+        </div>
+        <a href="/configuracion" class="btn-native btn-primary" style="white-space: nowrap;">Ir a Ajustes</a>
+      </div>
+
+      <div style="display: grid; grid-template-columns: minmax(0, 1fr) 320px; gap: 20px; align-items: start;">
+
+        <!-- Columna Izquierda: Datos y Líneas -->
+        <div style="display: flex; flex-direction: column; gap: 16px; min-width: 0;">
+
+          <!-- Datos Generales -->
+          <div class="card" style="background: #FFFFFF; border: 1px solid var(--mac-separator); border-radius: 8px; box-shadow: 0 1px 2px rgba(0,0,0,0.04);">
+            <div class="card-header" style="height: 38px; padding: 0 16px; background: #F8F8F9; border-bottom: 1px solid var(--mac-separator); display: flex; align-items: center;">
+              <h2 class="card-title" style="font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.02em; color: var(--mac-text-secondary); margin: 0;">
+                Datos del Documento
+              </h2>
+            </div>
+            <div class="card-body" style="padding: 16px 18px;">
+              <div class="form-row">
+                <div class="form-group">
+                  <label style="font-size: 11px; font-weight: 500; color: var(--mac-text-secondary); text-transform: uppercase;">Fecha de Emisión *</label>
+                  <input type="date" class="form-control" id="fecha_emision" name="fecha_emision" required>
+                </div>
+                <div class="form-group">
+                  <label style="font-size: 11px; font-weight: 500; color: var(--mac-text-secondary); text-transform: uppercase;">Fecha de Vencimiento</label>
+                  <input type="date" class="form-control" id="fecha_vencimiento" name="fecha_vencimiento">
+                </div>
+                <div class="form-group">
+                  <label style="font-size: 11px; font-weight: 500; color: var(--mac-text-secondary); text-transform: uppercase;">Estado Inicial</label>
+                  <select class="native-select" id="estado" name="estado" style="width: 100%;">
+                    <option value="Emitida" selected>Emitida</option>
+                    <option value="Borrador">Borrador</option>
+                  </select>
+                </div>
+              </div>
+
+              <div style="margin-top: 12px; display: flex; align-items: center; justify-content: space-between; background: var(--mac-sidebar-bg); border: 1px solid var(--mac-separator-subtle); border-radius: 6px; padding: 8px 12px;">
+                <div>
+                  <div style="display: flex; align-items: center; gap: 8px;">
+                    <span style="font-size: 11px; font-weight: 600; color: var(--mac-text-secondary); text-transform: uppercase;">Régimen de IVA</span>
+                    <span id="badge-sin-iva-active" class="badge" style="display: none; background: #F3E8FF; color: #7E22CE; font-size: 11px; padding: 1px 6px; border-radius: 4px; font-weight: 600; border: 1px solid #E9D5FF;">0% IVA Exento</span>
+                  </div>
+                  <div style="font-size: 11px; color: var(--mac-text-tertiary); margin-top: 1px;">Con IVA general o régimen exento / especial</div>
+                </div>
+                <div class="mac-segmented-control" id="factura-segmented-iva" role="group">
+                  <button type="button" class="segment-btn active" id="btn-factura-con-iva" onclick="setSinIvaFactura(false)">Con IVA</button>
+                  <button type="button" class="segment-btn segment-sin-iva" id="btn-factura-sin-iva" onclick="setSinIvaFactura(true)">Sin IVA</button>
+                </div>
+                <input type="checkbox" id="check-sin-iva" name="sin_iva" style="display: none;">
+              </div>
+
+              <!-- Selector de Cliente con autocompletado -->
+              <div class="form-group mt-2">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
+                  <label style="font-size: 11px; font-weight: 500; color: var(--mac-text-secondary); text-transform: uppercase; margin: 0;">Cliente Destinatario *</label>
+                  <button type="button" class="btn-native" id="btn-quick-crear-cliente" onclick="openQuickClienteModal('factura')" style="font-size: 11px; height: 20px; padding: 0 8px;">
+                    Nuevo Cliente…
+                  </button>
+                </div>
+                <div class="autocomplete-wrapper" style="position: relative;">
+                  <input
+                    type="text"
+                    class="form-control"
+                    id="cliente-search"
+                    placeholder="Buscar cliente por razón social, NIF o email…"
+                    autocomplete="off"
+                  >
+                  <div class="autocomplete-dropdown" id="cliente-dropdown"></div>
+                </div>
+              </div>
+
+              <!-- Vista previa de cliente seleccionado -->
+              <div id="cliente-info" class="hidden mt-2" style="background: var(--mac-sidebar-bg); border: 1px solid var(--mac-separator-subtle); border-radius: 6px; padding: 10px 14px; font-size: 12px;">
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 6px;">
+                  <div><span style="color: var(--mac-text-secondary);">NIF / CIF:</span> <strong id="cliente-nif"></strong></div>
+                  <div><span style="color: var(--mac-text-secondary);">Teléfono:</span> <span id="cliente-tel"></span></div>
+                  <div><span style="color: var(--mac-text-secondary);">Email:</span> <span id="cliente-email"></span></div>
+                  <div><span style="color: var(--mac-text-secondary);">Dirección:</span> <span id="cliente-dir"></span></div>
+                  <div><span style="color: var(--mac-text-secondary);">Forma de Pago:</span> <span id="cliente-pago"></span></div>
+                </div>
+              </div>
+
+              <div class="form-group mt-2">
+                <label style="font-size: 11px; font-weight: 500; color: var(--mac-text-secondary); text-transform: uppercase;">Observaciones / Notas al Pie</label>
+                <textarea class="form-control" id="observaciones" name="observaciones" rows="2" placeholder="Términos comerciales adicionales, número de pedido…"></textarea>
+              </div>
+            </div>
+          </div>
+
+          <!-- Líneas de Factura (Interfaz adaptativa y contenida) -->
+          <div class="card" style="background: #FFFFFF; border: 1px solid var(--mac-separator); border-radius: 8px; box-shadow: 0 1px 2px rgba(0,0,0,0.04); overflow: visible;">
+            <div class="card-header" style="height: 44px; padding: 0 16px; background: #F8F8F9; border-bottom: 1px solid var(--mac-separator); display: flex; align-items: center; justify-content: space-between;">
+              <h2 class="card-title" style="font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.02em; color: var(--mac-text-secondary); margin: 0;">
+                Líneas de la Factura
+              </h2>
+            </div>
+            <div class="card-body" style="padding: 14px 16px; overflow: visible; min-height: 180px;">
+              <div class="table-lineas-wrapper" style="overflow: visible;">
+                <table class="table table-lineas" style="background: #fff; width: 100%; border-collapse: collapse; overflow: visible;">
+                  <thead>
+                    <tr>
+                      <th style="width: 36%; min-width: 150px;">Productos / Descripción *</th>
+                      <th style="width: 24%; min-width: 110px;">Detalle / Especificación</th>
+                      <th style="width: 10%; min-width: 60px; text-align: center;">Cantidad</th>
+                      <th style="width: 14%; min-width: 75px; text-align: right;">Precio Unit. (€)</th>
+                      <th style="width: 12%; min-width: 75px; text-align: right;">Total sin IVA</th>
+                      <th style="width: 36px; min-width: 36px; text-align: center;"></th>
+                    </tr>
+                  </thead>
+                  <tbody id="lineas-tbody">
+                    <!-- Filas agregadas dinámicamente -->
+                  </tbody>
+                </table>
+              </div>
+              <div id="empty-lineas" style="text-align: center; padding: 24px; color: var(--mac-text-tertiary); font-size: 12px;">
+                Haga clic en «Añadir Producto» para incorporar conceptos a la factura
+              </div>
+              <div style="display: flex; justify-content: flex-start; margin-top: 12px;">
+                <button type="button" class="btn btn-secondary btn-sm" id="btn-add-linea-bottom">
+                  ➕ Añadir producto a la factura
+                </button>
+              </div>
+            </div>
+          </div>
+
+        </div>
+
+        <!-- Columna Derecha: Totales y Descuentos -->
+        <div style="position: sticky; top: 16px; display: flex; flex-direction: column; gap: 12px;">
+
+          <!-- Tarjeta de Descuento / Promoción -->
+          <div class="card" style="background: #FFFFFF; border: 1px solid var(--mac-separator); border-radius: 8px; box-shadow: 0 1px 2px rgba(0,0,0,0.04);">
+            <div class="card-header" style="height: 38px; padding: 0 16px; background: #F8F8F9; border-bottom: 1px solid var(--mac-separator); display: flex; align-items: center; justify-content: space-between;">
+              <h2 class="card-title" style="font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.02em; color: var(--mac-text-secondary); margin: 0;">
+                Descuento / Promoción
+              </h2>
+              <span id="badge-promo-activa" class="badge" style="display: none; background: #EFF6FF; color: #1D4ED8; font-size: 10px; padding: 1px 6px; font-weight: 600; border: 1px solid #BFDBFE;">Aplicado</span>
+            </div>
+            <div class="card-body" style="padding: 12px 14px;">
+              <div class="form-group">
+                <label style="font-size: 11px; font-weight: 500; color: var(--mac-text-secondary); text-transform: uppercase; margin-bottom: 4px; display: block;">Promoción Aplicable</label>
+                <select class="native-select" id="factura-select-descuento" style="width: 100%; font-size: 12px;" onchange="LineasManager.onSelectDescuento(this.value)">
+                  <option value="">(Sin descuento)</option>
+                </select>
+              </div>
+
+              <div id="panel-descuento-config" style="display: none; margin-top: 10px; border-top: 1px solid var(--mac-separator-subtle); padding-top: 10px;">
+                <label style="font-size: 11px; font-weight: 500; color: var(--mac-text-secondary); text-transform: uppercase; margin-bottom: 4px; display: block;">
+                  Visibilidad en Factura Final
+                </label>
+                <div class="mac-segmented-control" id="factura-segmented-descuento-visibilidad" role="group" style="width: 100%;">
+                  <button type="button" class="segment-btn active" id="btn-descuento-visible" onclick="LineasManager.setDescuentoVisible(true)" style="flex: 1; font-size: 11px; padding: 3px 4px;">
+                    👁️ Visible
+                  </button>
+                  <button type="button" class="segment-btn" id="btn-descuento-oculto" onclick="LineasManager.setDescuentoVisible(false)" style="flex: 1; font-size: 11px; padding: 3px 4px;">
+                    🔒 Oculto (Neto)
+                  </button>
+                </div>
+                <div id="info-descuento-detalle" style="font-size: 11px; color: var(--mac-text-secondary); margin-top: 6px; line-height: 1.35;"></div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Resumen Económico -->
+          <div class="card" style="background: #FFFFFF; border: 1px solid var(--mac-separator); border-radius: 8px; box-shadow: 0 1px 2px rgba(0,0,0,0.04);">
+            <div class="card-header" style="height: 38px; padding: 0 16px; background: #F8F8F9; border-bottom: 1px solid var(--mac-separator); display: flex; align-items: center;">
+              <h2 class="card-title" style="font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.02em; color: var(--mac-text-secondary); margin: 0;">
+                Resumen Económico
+              </h2>
+            </div>
+            <div class="card-body" style="padding: 16px;">
+              <div class="totales-panel" style="display: flex; flex-direction: column; gap: 8px;">
+                <div id="fila-subtotal-bruto" style="display: none; justify-content: space-between; font-size: 12px;">
+                  <span style="color: var(--mac-text-secondary);">Subtotal Bruto</span>
+                  <strong id="total-subtotal-bruto" style="color: var(--mac-text-primary);">0,00 €</strong>
+                </div>
+                <div id="fila-descuento-aplicado" style="display: none; justify-content: space-between; font-size: 12px;">
+                  <span style="color: #2563EB;" id="label-descuento-totales">Descuento</span>
+                  <strong id="total-descuento-importe" style="color: #2563EB;">-0,00 €</strong>
+                </div>
+                <div style="display: flex; justify-content: space-between; font-size: 12px;">
+                  <span style="color: var(--mac-text-secondary);">Base Imponible</span>
+                  <strong id="total-base" style="color: var(--mac-text-primary);">0,00 €</strong>
+                </div>
+                <div style="display: flex; justify-content: space-between; font-size: 12px;">
+                  <span style="color: var(--mac-text-secondary);">IVA Calculado</span>
+                  <span id="total-iva" style="color: var(--mac-text-primary);">0,00 €</span>
+                </div>
+                <div style="display: flex; justify-content: space-between; font-size: 12px;">
+                  <span style="color: var(--mac-text-secondary);">Retención IRPF</span>
+                  <span id="total-irpf" style="color: var(--mac-system-red);">0,00 €</span>
+                </div>
+              </div>
+
+              <div style="border-top: 1px solid var(--mac-separator-subtle); margin-top: 14px; padding-top: 12px; display: flex; justify-content: space-between; align-items: baseline;">
+                <span style="font-size: 12px; font-weight: 600; color: var(--mac-text-primary);">TOTAL A PAGAR</span>
+                <strong id="total-final" style="font-size: 20px; font-weight: 700; color: var(--mac-accent);">0,00 €</strong>
+              </div>
+
+              <div style="margin-top: 18px;">
+                <button
+                  type="submit"
+                  form="form-nueva-factura"
+                  class="btn-native btn-primary"
+                  id="btn-emitir-side"
+                  style="width: 100%; height: 30px; font-size: 13px;"
+                >
+                  <span class="btn-text">{{ "Guardar Cambios y Descargar PDF" if factura_id else "Emitir Factura y Descargar PDF" }}</span>
+                </button>
+                <p style="font-size: 11px; color: var(--mac-text-tertiary); text-align: center; margin-top: 6px;">
+                  Generación en PDF y registro inmediato en la base de datos
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </form>
+  </div>
+</main>
+
+<!-- Modal Rápido: Crear Cliente In-Situ -->
+<div class="modal-overlay" id="quick-cliente-modal">
+  <div class="modal" style="max-width: 540px; border-radius: 10px; box-shadow: 0 20px 60px rgba(0,0,0,0.22); border: 1px solid rgba(0,0,0,0.18);">
+    <div class="modal-header" style="height: 44px; padding: 0 16px; background: #F8F8F9; border-bottom: 1px solid var(--mac-separator);">
+      <h3 class="modal-title" style="font-size: 13px; font-weight: 600;">Nuevo Cliente Rápido</h3>
+      <button type="button" class="btn-icon" id="btn-close-quick-cliente-modal" onclick="closeQuickClienteModal()">✕</button>
+    </div>
+    <div class="modal-body" style="padding: 18px 20px;">
+      <form id="form-quick-cliente" novalidate onsubmit="submitQuickCliente(event)">
+        <div id="quick-cliente-alert" class="hidden mb-3" style="background: #FFF2F2; color: var(--mac-system-red); padding: 8px 12px; border-radius: 6px; font-size: 12px; border: 1px solid rgba(255,59,48,0.2);"></div>
+
+        <div class="form-row">
+          <div class="form-group">
+            <label style="font-size: 11px; font-weight: 500; color: var(--mac-text-secondary); text-transform: uppercase;">Razón Social *</label>
+            <input type="text" class="form-control" id="quick_razon_social" name="razon_social" required placeholder="Nombre comercial o particular">
+          </div>
+          <div class="form-group">
+            <label style="font-size: 11px; font-weight: 500; color: var(--mac-text-secondary); text-transform: uppercase;">NIF / CIF</label>
+            <input type="text" class="form-control font-mono" id="quick_nif_cif" name="nif_cif" placeholder="B12345678">
+          </div>
+        </div>
+
+        <div class="form-row mt-2">
+          <div class="form-group">
+            <label style="font-size: 11px; font-weight: 500; color: var(--mac-text-secondary); text-transform: uppercase;">Teléfono</label>
+            <input type="tel" class="form-control" id="quick_telefono" name="telefono" placeholder="+34 600 000 000">
+          </div>
+          <div class="form-group">
+            <label style="font-size: 11px; font-weight: 500; color: var(--mac-text-secondary); text-transform: uppercase;">Email</label>
+            <input type="email" class="form-control" id="quick_email" name="email" placeholder="cliente@correo.com">
+          </div>
+        </div>
+
+        <div class="form-group mt-2">
+          <label style="font-size: 11px; font-weight: 500; color: var(--mac-text-secondary); text-transform: uppercase;">Dirección</label>
+          <input type="text" class="form-control" id="quick_direccion" name="direccion" placeholder="Calle Mayor, 1">
+        </div>
+
+        <div class="form-row mt-2">
+          <div class="form-group">
+            <label style="font-size: 11px; font-weight: 500; color: var(--mac-text-secondary); text-transform: uppercase;">Código Postal</label>
+            <input type="text" class="form-control" id="quick_codigo_postal" name="codigo_postal" placeholder="28001">
+          </div>
+          <div class="form-group">
+            <label style="font-size: 11px; font-weight: 500; color: var(--mac-text-secondary); text-transform: uppercase;">Ciudad</label>
+            <input type="text" class="form-control" id="quick_ciudad" name="ciudad" placeholder="Madrid">
+          </div>
+          <div class="form-group">
+            <label style="font-size: 11px; font-weight: 500; color: var(--mac-text-secondary); text-transform: uppercase;">Provincia</label>
+            <input type="text" class="form-control" id="quick_provincia" name="provincia" placeholder="Madrid">
+          </div>
+        </div>
+
+        <div class="form-group mt-2">
+          <label style="font-size: 11px; font-weight: 500; color: var(--mac-text-secondary); text-transform: uppercase;">Forma de Pago</label>
+          <select class="native-select" id="quick_forma_pago_defecto" name="forma_pago_defecto" style="width: 100%;">
+            <option value="Transferencia bancaria" selected>Transferencia bancaria</option>
+            <option value="Bizum / Efectivo">Bizum / Efectivo</option>
+            <option value="Tarjeta">Tarjeta</option>
+            <option value="Contado">Contado</option>
+            <option value="Domiciliación bancaria">Domiciliación bancaria</option>
+          </select>
+        </div>
+
+        <div class="modal-footer" style="padding-top: 18px; margin-top: 16px; border-top: 1px solid var(--mac-separator-subtle); display: flex; justify-content: flex-end; gap: 8px;">
+          <button type="button" class="btn-native" id="btn-cancel-quick-cliente" onclick="closeQuickClienteModal()">Cancelar</button>
+          <button type="submit" class="btn-native btn-primary" id="btn-submit-quick-cliente">Guardar y Seleccionar</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+  window.FACTURA_EDITING_ID = {{ factura_id | tojson }};
+  document.getElementById('cliente-info').style.removeProperty('display');
+</script>
+{% endblock %}

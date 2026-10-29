@@ -1,0 +1,27 @@
+meta {
+  name: Actualizar Factura
+  type: http
+  seq: 4
+}
+
+put {
+  url: {{baseUrl}}/api/facturas/1
+  body: json
+  auth: none
+}
+
+body:json {
+  {
+    "observaciones": "Pago recibido mediante transferencia",
+    "lineas": [
+      {
+        "descripcion": "Tarjetón invitación con ilustración",
+        "detalle_material": "A5 Papel 350 gr verjurado premium / acabado mate",
+        "cantidad": 120,
+        "precio_unitario": 1.85,
+        "porcentaje_iva": 21.0,
+        "porcentaje_irpf": 0.0
+      }
+    ]
+  }
+}

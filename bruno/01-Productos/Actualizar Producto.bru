@@ -1,0 +1,40 @@
+meta {
+  name: Actualizar Producto
+  type: http
+  seq: 4
+}
+
+put {
+  url: {{baseUrl}}/api/productos/1
+  body: json
+  auth: none
+}
+
+body:json {
+  {
+    "nombre": "Invitación de Boda Artesanal Premium",
+    "descripcion": "Papel de algodón 350 gr verjurado con bordes rasgados a mano",
+    "precio_unitario_base": 6.90,
+    "porcentaje_iva": 21.0,
+    "escalados": [
+      {
+        "cantidad_minima": 1.0,
+        "cantidad_maxima": 49.0,
+        "precio_unitario": 6.90
+      },
+      {
+        "cantidad_minima": 50.0,
+        "cantidad_maxima": null,
+        "precio_unitario": 4.90
+      }
+    ],
+    "variantes": [
+      {
+        "tipo_atributo": "Color",
+        "valor": "Kraft Rústico",
+        "color_hex": "#C4A482",
+        "precio_adicional": 0.30
+      }
+    ]
+  }
+}

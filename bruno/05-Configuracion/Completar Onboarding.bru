@@ -1,0 +1,26 @@
+meta {
+  name: Completar Onboarding
+  type: http
+  seq: 7
+}
+
+post {
+  url: {{baseUrl}}/api/onboarding/completar
+  body: json
+  auth: none
+}
+
+body:json {
+  {
+    "nombre": "Mi Empresa S.L.",
+    "nif": "B12345674",
+    "direccion": "Calle Mayor 1",
+    "codigo_postal": "28001",
+    "ciudad": "Madrid",
+    "email": "contacto@miempresa.com",
+    "telefono": "912345678",
+    "iban": "ES9121000418450200051332",
+    "pdf_storage_dir": ""
+  }
+}
+

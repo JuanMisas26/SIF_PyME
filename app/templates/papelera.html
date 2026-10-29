@@ -1,0 +1,354 @@
+{% extends "base.html" %}
+
+{% block title %}Papelera · SIF PyME{% endblock %}
+
+{% block content %}
+<main class="main-content" style="padding: 24px 32px; display: flex; flex-direction: column; flex: 1; min-height: 0; overflow-y: auto; gap: 20px; width: 100%; box-sizing: border-box;">
+  <!-- Cabecera de Página Estilo macOS -->
+  <div style="display: flex; justify-content: space-between; align-items: flex-end; border-bottom: 1px solid var(--mac-separator); padding-bottom: 16px;">
+    <div>
+      <div style="font-size: 11px; font-weight: 600; text-transform: uppercase; color: var(--mac-text-tertiary); letter-spacing: 0.5px; margin-bottom: 4px;">
+        Gestión de Respaldo
+      </div>
+      <h1 style="font-size: 22px; font-weight: 700; color: var(--mac-text-primary); margin: 0; letter-spacing: -0.02em;">
+        Papelera de Reciclaje
+      </h1>
+      <p style="font-size: 13px; color: var(--mac-text-secondary); margin: 4px 0 0 0;">
+        Recupera facturas y presupuestos eliminados o elimínalos de forma permanente.
+      </p>
+    </div>
+
+    <div style="display: flex; gap: 10px;">
+      <button type="button" class="btn-native btn-danger" id="btn-vaciar-papelera" onclick="confirmarVaciarPapelera()" style="display: none;">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+          <polyline points="3 6 5 6 21 6"></polyline>
+          <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+        </svg>
+        Vaciar Papelera…
+      </button>
+    </div>
+  </div>
+
+  <!-- Segmented Control macOS (Facturas / Presupuestos) -->
+  <div style="display: flex; gap: 6px; background: rgba(0,0,0,0.06); padding: 3px; border-radius: 8px; width: fit-content;">
+    <button type="button" class="btn-tab-segmented active" id="tab-btn-facturas" onclick="cambiarPestanaPapelera('facturas')" style="padding: 5px 16px; font-size: 12px; font-weight: 600; border-radius: 6px; border: none; cursor: pointer; transition: all 0.15s ease;">
+      Facturas (<span id="count-facturas-papelera">0</span>)
+    </button>
+    <button type="button" class="btn-tab-segmented" id="tab-btn-presupuestos" onclick="cambiarPestanaPapelera('presupuestos')" style="padding: 5px 16px; font-size: 12px; font-weight: 500; border-radius: 6px; border: none; cursor: pointer; background: transparent; color: var(--mac-text-secondary); transition: all 0.15s ease;">
+      Presupuestos (<span id="count-presupuestos-papelera">0</span>)
+    </button>
+  </div>
+
+  <!-- Contenedor de Listado -->
+  <div class="table-container" style="background: #FFFFFF; border-radius: 8px; border: 1px solid var(--mac-separator); overflow: hidden; box-shadow: var(--shadow-sm); width: 100%;">
+    <!-- Tabla de Facturas en Papelera -->
+    <div id="vista-papelera-facturas" style="width: 100%;">
+      <table class="mac-table" style="margin: 0; width: 100%;">
+        <thead>
+          <tr>
+            <th style="width: 150px;">Número</th>
+            <th>Cliente</th>
+            <th style="width: 130px;">Fecha Emisión</th>
+            <th style="width: 140px;">Eliminado el</th>
+            <th style="text-align: right; width: 140px;">Total Factura</th>
+            <th style="text-align: right; width: 190px;">Acciones</th>
+          </tr>
+        </thead>
+        <tbody id="tbody-papelera-facturas">
+          <tr>
+            <td colspan="6" style="text-align: center; padding: 40px; color: var(--mac-text-tertiary);">
+              Cargando papelera…
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <!-- Tabla de Presupuestos en Papelera -->
+    <div id="vista-papelera-presupuestos" style="display: none; width: 100%;">
+      <table class="mac-table" style="margin: 0; width: 100%;">
+        <thead>
+          <tr>
+            <th style="width: 160px;">Número</th>
+            <th>Cliente</th>
+            <th>Título del Proyecto</th>
+            <th style="width: 140px;">Eliminado el</th>
+            <th style="text-align: right; width: 140px;">Total Estimado</th>
+            <th style="text-align: right; width: 190px;">Acciones</th>
+          </tr>
+        </thead>
+        <tbody id="tbody-papelera-presupuestos">
+          <tr>
+            <td colspan="6" style="text-align: center; padding: 40px; color: var(--mac-text-tertiary);">
+              Cargando presupuestos en papelera…
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</main>
+{% endblock %}
+
+{% block scripts %}
+<script>
+  let papeleraData = { facturas: [], presupuestos: [], total: 0 };
+  let pestanaActiva = 'facturas';
+
+  document.addEventListener('DOMContentLoaded', () => {
+    // Marcar navegación activa en el Sidebar
+    document.querySelectorAll('.sidebar-item').forEach(el => el.classList.remove('active'));
+    const navPapelera = document.getElementById('nav-item-papelera');
+    if (navPapelera) navPapelera.classList.add('active');
+
+    cargarPapelera();
+  });
+
+  async function cargarPapelera() {
+    try {
+      const res = await apiFetch('/api/papelera');
+      papeleraData = res || { facturas: [], presupuestos: [], total: 0 };
+
+      document.getElementById('count-facturas-papelera').textContent = papeleraData.facturas.length;
+      document.getElementById('count-presupuestos-papelera').textContent = papeleraData.presupuestos.length;
+
+      const btnVaciar = document.getElementById('btn-vaciar-papelera');
+      if (btnVaciar) {
+        btnVaciar.style.display = papeleraData.total > 0 ? 'inline-flex' : 'none';
+      }
+
+      renderizarTablas();
+      if (typeof window.actualizarContadoresSidebar === 'function') {
+        window.actualizarContadoresSidebar();
+      }
+    } catch (err) {
+      Toast.error('Error al cargar papelera', err.message);
+    }
+  }
+
+  function cambiarPestanaPapelera(pestana) {
+    pestanaActiva = pestana;
+
+    const btnF = document.getElementById('tab-btn-facturas');
+    const btnP = document.getElementById('tab-btn-presupuestos');
+    const vistaF = document.getElementById('vista-papelera-facturas');
+    const vistaP = document.getElementById('vista-papelera-presupuestos');
+
+    if (pestana === 'facturas') {
+      btnF.classList.add('active');
+      btnF.style.background = '#FFFFFF';
+      btnF.style.color = 'var(--mac-text-primary)';
+      btnF.style.boxShadow = '0 1px 3px rgba(0,0,0,0.1)';
+
+      btnP.classList.remove('active');
+      btnP.style.background = 'transparent';
+      btnP.style.color = 'var(--mac-text-secondary)';
+      btnP.style.boxShadow = 'none';
+
+      vistaF.style.display = 'block';
+      vistaP.style.display = 'none';
+    } else {
+      btnP.classList.add('active');
+      btnP.style.background = '#FFFFFF';
+      btnP.style.color = 'var(--mac-text-primary)';
+      btnP.style.boxShadow = '0 1px 3px rgba(0,0,0,0.1)';
+
+      btnF.classList.remove('active');
+      btnF.style.background = 'transparent';
+      btnF.style.color = 'var(--mac-text-secondary)';
+      btnF.style.boxShadow = 'none';
+
+      vistaP.style.display = 'block';
+      vistaF.style.display = 'none';
+    }
+  }
+
+  function renderizarTablas() {
+    renderizarFacturas();
+    renderizarPresupuestos();
+  }
+
+  function renderizarFacturas() {
+    const tbody = document.getElementById('tbody-papelera-facturas');
+    if (!papeleraData.facturas || papeleraData.facturas.length === 0) {
+      tbody.innerHTML = `
+        <tr>
+          <td colspan="6" style="text-align: center; padding: 48px 20px; color: var(--mac-text-tertiary);">
+            <div style="font-size: 24px; margin-bottom: 8px;">🗑️</div>
+            <div style="font-weight: 600; font-size: 13px; color: var(--mac-text-secondary);">No hay facturas en la papelera</div>
+            <div style="font-size: 12px; margin-top: 4px;">Las facturas que elimines se guardarán aquí para su recuperación.</div>
+          </td>
+        </tr>
+      `;
+      return;
+    }
+
+    tbody.innerHTML = papeleraData.facturas.map(f => {
+      const fechaDel = f.updated_at ? f.updated_at.substring(0, 16).replace('T', ' ') : '—';
+      return `
+        <tr>
+          <td style="font-family: var(--font-mono); font-weight: 600; color: var(--mac-text-primary);">
+            ${escapeHtml(f.numero_factura)}
+          </td>
+          <td>${escapeHtml(f.cliente_nombre || 'Cliente sin nombre')}</td>
+          <td>${f.fecha_emision || '—'}</td>
+          <td style="color: var(--mac-text-tertiary); font-size: 11px;">${fechaDel}</td>
+          <td style="text-align: right; font-weight: 600;">${formatCurrency(f.total_factura)}</td>
+          <td style="text-align: right;">
+            <div style="display: inline-flex; gap: 6px; justify-content: flex-end;">
+              <button type="button" class="btn-native" style="height: 24px; font-size: 11px; padding: 0 8px;" onclick="restaurarFactura(${f.id})">
+                <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                  <polyline points="9 14 4 9 9 4"></polyline>
+                  <path d="M20 20v-7a4 4 0 0 0-4-4H4"></path>
+                </svg>
+                Restaurar
+              </button>
+              <button type="button" class="btn-native btn-danger" style="height: 24px; font-size: 11px; padding: 0 8px;" onclick="confirmarDestruirFactura(${f.id}, '${escapeHtml(f.numero_factura)}')">
+                Destruir
+              </button>
+            </div>
+          </td>
+        </tr>
+      `;
+    }).join('');
+  }
+
+  function renderizarPresupuestos() {
+    const tbody = document.getElementById('tbody-papelera-presupuestos');
+    if (!papeleraData.presupuestos || papeleraData.presupuestos.length === 0) {
+      tbody.innerHTML = `
+        <tr>
+          <td colspan="6" style="text-align: center; padding: 48px 20px; color: var(--mac-text-tertiary);">
+            <div style="font-size: 24px; margin-bottom: 8px;">🗑️</div>
+            <div style="font-weight: 600; font-size: 13px; color: var(--mac-text-secondary);">No hay presupuestos en la papelera</div>
+            <div style="font-size: 12px; margin-top: 4px;">Los presupuestos eliminados aparecerán aquí para su posible recuperación.</div>
+          </td>
+        </tr>
+      `;
+      return;
+    }
+
+    tbody.innerHTML = papeleraData.presupuestos.map(p => {
+      const fechaDel = p.updated_at ? p.updated_at.substring(0, 16).replace('T', ' ') : '—';
+      return `
+        <tr>
+          <td style="font-family: var(--font-mono); font-weight: 600; color: var(--mac-text-primary);">
+            ${escapeHtml(p.numero_presupuesto)}
+          </td>
+          <td>${escapeHtml(p.cliente_nombre || 'Cliente sin nombre')}</td>
+          <td>${escapeHtml(p.titulo || 'Presupuesto')}</td>
+          <td style="color: var(--mac-text-tertiary); font-size: 11px;">${fechaDel}</td>
+          <td style="text-align: right; font-weight: 600;">${formatCurrency(p.total_estimado)}</td>
+          <td style="text-align: right;">
+            <div style="display: inline-flex; gap: 6px; justify-content: flex-end;">
+              <button type="button" class="btn-native" style="height: 24px; font-size: 11px; padding: 0 8px;" onclick="restaurarPresupuesto(${p.id})">
+                <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                  <polyline points="9 14 4 9 9 4"></polyline>
+                  <path d="M20 20v-7a4 4 0 0 0-4-4H4"></path>
+                </svg>
+                Restaurar
+              </button>
+              <button type="button" class="btn-native btn-danger" style="height: 24px; font-size: 11px; padding: 0 8px;" onclick="confirmarDestruirPresupuesto(${p.id}, '${escapeHtml(p.numero_presupuesto)}')">
+                Destruir
+              </button>
+            </div>
+          </td>
+        </tr>
+      `;
+    }).join('');
+  }
+
+  async function restaurarFactura(id) {
+    try {
+      await apiFetch(`/api/facturas/${id}/restaurar`, { method: 'POST' });
+      Toast.success('Factura recuperada', 'Se ha devuelto al listado activo de facturas.');
+      cargarPapelera();
+    } catch (err) {
+      Toast.error('Error al restaurar', err.message);
+    }
+  }
+
+  async function restaurarPresupuesto(id) {
+    try {
+      await apiFetch(`/api/presupuestos/${id}/restaurar`, { method: 'POST' });
+      Toast.success('Presupuesto recuperado', 'Se ha devuelto al listado activo de presupuestos.');
+      cargarPapelera();
+    } catch (err) {
+      Toast.error('Error al restaurar', err.message);
+    }
+  }
+
+  async function confirmarDestruirFactura(id, numero) {
+    const fnConfirm = window.showMacConfirmDialog || window.showMacConfirm;
+    let ok = false;
+    if (typeof fnConfirm === 'function') {
+      ok = await fnConfirm({
+        title: `¿Destruir definitivamente la factura ${numero}?`,
+        message: 'Esta acción es irreversible y eliminará todos los registros asociados de forma permanente.',
+        confirmText: 'Destruir definitivamente',
+        isDestructive: true
+      });
+    } else {
+      ok = confirm(`¿Destruir permanentemente la factura ${numero}?`);
+    }
+    if (!ok) return;
+
+    try {
+      await apiFetch(`/api/facturas/${id}/destruir`, { method: 'DELETE' });
+      Toast.success('Factura eliminada', 'Se ha eliminado definitivamente.');
+      cargarPapelera();
+    } catch (err) {
+      Toast.error('Error al eliminar', err.message);
+    }
+  }
+
+  async function confirmarDestruirPresupuesto(id, numero) {
+    const fnConfirm = window.showMacConfirmDialog || window.showMacConfirm;
+    let ok = false;
+    if (typeof fnConfirm === 'function') {
+      ok = await fnConfirm({
+        title: `¿Destruir definitivamente el presupuesto ${numero}?`,
+        message: 'Esta acción es irreversible y eliminará todas las opciones y partidas de forma permanente.',
+        confirmText: 'Destruir definitivamente',
+        isDestructive: true
+      });
+    } else {
+      ok = confirm(`¿Destruir permanentemente el presupuesto ${numero}?`);
+    }
+    if (!ok) return;
+
+    try {
+      await apiFetch(`/api/presupuestos/${id}/destruir`, { method: 'DELETE' });
+      Toast.success('Presupuesto eliminado', 'Se ha eliminado definitivamente.');
+      cargarPapelera();
+    } catch (err) {
+      Toast.error('Error al eliminar', err.message);
+    }
+  }
+
+  async function confirmarVaciarPapelera() {
+    const fnConfirm = window.showMacConfirmDialog || window.showMacConfirm;
+    let ok = false;
+    if (typeof fnConfirm === 'function') {
+      ok = await fnConfirm({
+        title: '¿Vaciar la papelera por completo?',
+        message: 'Se destruirán permanentemente todas las facturas y presupuestos en la papelera. Esta acción no se puede deshacer.',
+        confirmText: 'Vaciar Papelera',
+        isDestructive: true
+      });
+    } else {
+      ok = confirm('¿Vaciar toda la papelera?');
+    }
+    if (!ok) return;
+
+    try {
+      await apiFetch('/api/papelera/vaciar', { method: 'POST' });
+      Toast.success('Papelera vaciada', 'Todos los elementos han sido destruidos permanentemente.');
+      cargarPapelera();
+    } catch (err) {
+      Toast.error('Error al vaciar papelera', err.message);
+    }
+  }
+</script>
+{% endblock %}
+

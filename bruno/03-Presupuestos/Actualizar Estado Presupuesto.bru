@@ -1,0 +1,19 @@
+meta {
+  name: Actualizar Estado Presupuesto
+  type: http
+  seq: 9
+}
+
+patch {
+  url: {{baseUrl}}/api/presupuestos/1/estado
+  body: json
+  auth: none
+}
+
+body:json {
+  {
+    "estado": "Aceptado",
+    "opcion_aprobada_id": 1
+  }
+}
+

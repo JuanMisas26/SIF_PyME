@@ -1,0 +1,1034 @@
+{% extends "base.html" %}
+{% block title %}Presupuestos — SIF PyME macOS{% endblock %}
+
+{% block content %}
+<style>
+  .mac-dropdown-menu {
+    animation: macMenuFadeIn 0.12s ease-out;
+  }
+  @keyframes macMenuFadeIn {
+    from { opacity: 0; transform: translateY(-4px) scale(0.98); }
+    to { opacity: 1; transform: translateY(0) scale(1); }
+  }
+  .mac-dropdown-item {
+    transition: background 0.1s ease, color 0.1s ease;
+  }
+  .mac-dropdown-item:hover {
+    background: rgba(0, 0, 0, 0.05) !important;
+  }
+  .mac-dropdown-item.item-danger:hover {
+    background: #FEE2E2 !important;
+    color: var(--mac-system-red) !important;
+  }
+  #tabla-presupuestos th, #tabla-presupuestos td {
+    padding: 6px 8px;
+  }
+</style>
+
+<main class="main-content" style="padding: 0; display: flex; flex-direction: column; flex: 1; min-height: 0;">
+  
+  <!-- Sub-barra de acciones nativa macOS -->
+  <div class="filter-bar">
+    <div class="filter-group">
+      <span class="filter-label" style="font-weight: 600; color: var(--mac-text-primary);">Presupuestos</span>
+      <span class="filter-label" style="color: var(--mac-text-tertiary);">•</span>
+      <span class="filter-label">Estado:</span>
+      <select id="filtro-estado-presupuesto" class="native-select">
+        <option value="">Todos los estados</option>
+        <option value="Borrador">Borrador</option>
+        <option value="Enviado">Enviado</option>
+        <option value="Aceptado">Aceptado</option>
+        <option value="Facturado">Facturado</option>
+        <option value="Rechazado">Rechazado</option>
+      </select>
+    </div>
+
+    <div class="filter-group">
+      <div class="search-field">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="11" cy="11" r="8"></circle>
+          <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+        </svg>
+        <input type="text" class="search-input" id="busqueda-presupuestos" placeholder="Buscar por número, cliente o título…" style="width: 220px;" aria-label="Buscar presupuestos">
+      </div>
+    </div>
+  </div>
+
+  <!-- Tabla de Presupuestos Estilo macOS (NSTableView) -->
+  <div class="table-container">
+    <table class="mac-table" id="tabla-presupuestos">
+      <thead>
+        <tr>
+          <th style="width: 155px;">Identificador</th>
+          <th style="width: 155px;">Cliente</th>
+          <th style="width: 80px;">Fecha</th>
+          <th>Título del Proyecto</th>
+          <th style="text-align: right; width: 140px;">Rango / Total</th>
+          <th style="width: 95px;">Estado</th>
+          <th style="width: 95px;">Factura</th>
+          <th style="text-align: right; width: 235px;">Acciones</th>
+        </tr>
+      </thead>
+      <tbody id="presupuestos-tbody">
+        <tr>
+          <td colspan="8" style="text-align: center; padding: 40px; color: var(--mac-text-tertiary);">
+            Cargando propuestas y presupuestos…
+          </td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+</main>
+
+<!-- Modal Convertir a Factura Estilo macOS Sheet (NSPanel) -->
+<div class="modal-overlay" id="modal-convertir-factura">
+  <div class="modal" style="max-width: 520px; border-radius: 10px; box-shadow: 0 20px 60px rgba(0,0,0,0.22); border: 1px solid rgba(0,0,0,0.18);">
+    <div class="modal-header" style="height: 44px; padding: 0 16px; background: #F8F8F9; border-bottom: 1px solid var(--mac-separator);">
+      <h3 class="modal-title" style="font-size: 13px; font-weight: 600;">Convertir Presupuesto a Factura</h3>
+      <button type="button" class="btn-icon" onclick="cerrarModalConvertir()" title="Cerrar">✕</button>
+    </div>
+    <div class="modal-body" style="padding: 18px 20px;">
+      <div id="convertir-alert-container"></div>
+      <p style="font-size: 12px; color: var(--mac-text-secondary); margin-bottom: 14px;">
+        Seleccione la opción aprobada por el cliente para traspasar los productos a una factura oficial emitida:
+      </p>
+
+      <input type="hidden" id="convertir-presupuesto-id">
+
+      <div class="form-group">
+        <label style="font-size: 11px; font-weight: 500; color: var(--mac-text-secondary); text-transform: uppercase;">Opción Aprobada *</label>
+        <div id="convertir-opciones-list" style="display: flex; flex-direction: column; gap: 8px; margin-top: 6px;">
+          <!-- Radio buttons dinámicos -->
+        </div>
+      </div>
+
+
+      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 14px;">
+        <div class="form-group">
+          <label style="font-size: 11px; font-weight: 500; color: var(--mac-text-secondary); text-transform: uppercase;">% IVA Aplicado</label>
+          <input type="number" id="convertir-iva" class="form-control" value="21" step="0.5" min="0" max="100" oninput="actualizarPreviewConvertir()">
+        </div>
+        <div class="form-group">
+          <label style="font-size: 11px; font-weight: 500; color: var(--mac-text-secondary); text-transform: uppercase;">% Retención IRPF</label>
+          <input type="number" id="convertir-irpf" class="form-control" value="0" step="0.5" min="0" max="100" oninput="actualizarPreviewConvertir()">
+        </div>
+      </div>
+
+      <div style="margin-top: 12px; display: flex; align-items: center; justify-content: space-between; background: var(--mac-sidebar-bg); border: 1px solid var(--mac-separator-subtle); border-radius: 6px; padding: 8px 12px;">
+        <div>
+          <span style="font-size: 11px; font-weight: 600; color: var(--mac-text-secondary); text-transform: uppercase;">Régimen de IVA</span>
+          <div style="font-size: 11px; color: var(--mac-text-tertiary); margin-top: 1px;">Con IVA general o régimen exento</div>
+        </div>
+        <div class="mac-segmented-control" id="modal-convertir-segmented-iva" role="group">
+          <button type="button" class="segment-btn active" id="btn-convertir-con-iva" onclick="setConvertirSinIva(false)">Con IVA</button>
+          <button type="button" class="segment-btn segment-sin-iva" id="btn-convertir-sin-iva" onclick="setConvertirSinIva(true)">Sin IVA</button>
+        </div>
+        <input type="hidden" id="convertir-sin-iva" value="0">
+      </div>
+
+      <div id="convertir-preview-totales" style="background: var(--mac-sidebar-bg); border: 1px solid var(--mac-separator-subtle); border-radius: 6px; padding: 10px 14px; margin-top: 14px; font-size: 12px;">
+        <div style="display:flex; justify-content:space-between; margin-bottom: 3px;">
+          <span style="color:var(--mac-text-secondary);">Subtotal Opción:</span>
+          <strong id="convertir-preview-base">0,00 €</strong>
+        </div>
+        <div style="display:flex; justify-content:space-between; margin-bottom: 3px;">
+          <span style="color:var(--mac-text-secondary);">IVA Calculado:</span>
+          <span id="convertir-preview-iva" style="color:var(--mac-text-primary);">0,00 €</span>
+        </div>
+        <div style="display:flex; justify-content:space-between; margin-bottom: 3px;">
+          <span style="color:var(--mac-text-secondary);">Retención IRPF:</span>
+          <span id="convertir-preview-irpf" style="color:var(--mac-system-red);">0,00 €</span>
+        </div>
+        <div style="display:flex; justify-content:space-between; border-top:1px solid var(--mac-separator); padding-top:6px; margin-top:6px;">
+          <span style="font-weight:600; color:var(--mac-text-primary);">Total Factura Oficial:</span>
+          <strong id="convertir-preview-total" style="font-size:14px; color:var(--mac-accent);">0,00 €</strong>
+        </div>
+      </div>
+
+      <div class="modal-footer" style="padding-top: 18px; margin-top: 16px; border-top: 1px solid var(--mac-separator-subtle); display: flex; justify-content: flex-end; gap: 8px;">
+        <button type="button" class="btn-native" onclick="cerrarModalConvertir()">Cancelar</button>
+        <button type="button" class="btn-native btn-primary" id="btn-confirmar-convertir" onclick="ejecutarConversionFactura(event)">
+          Generar Factura Oficial
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Modal Aceptar Propuesta Estilo macOS Sheet (NSPanel) -->
+<div class="modal-overlay" id="modal-aceptar-presupuesto">
+  <div class="modal" style="max-width: 500px; border-radius: 10px; box-shadow: 0 20px 60px rgba(0,0,0,0.22); border: 1px solid rgba(0,0,0,0.18);">
+    <div class="modal-header" style="height: 44px; padding: 0 16px; background: #F8F8F9; border-bottom: 1px solid var(--mac-separator); display: flex; align-items: center; justify-content: space-between;">
+      <h3 class="modal-title" style="font-size: 13px; font-weight: 600; margin: 0;">Aceptar Propuesta / Presupuesto</h3>
+      <button type="button" class="btn-icon" onclick="cerrarModalAceptar()" title="Cerrar">✕</button>
+    </div>
+    <div class="modal-body" style="padding: 18px 20px;">
+      <p style="font-size: 12px; color: var(--mac-text-secondary); margin-bottom: 14px;">
+        Selecciona la opción aprobada por el cliente para registrar la propuesta como aceptada:
+      </p>
+
+      <input type="hidden" id="aceptar-presupuesto-id">
+
+      <div class="form-group">
+        <label style="font-size: 11px; font-weight: 500; color: var(--mac-text-secondary); text-transform: uppercase;">Opción Aprobada por el Cliente *</label>
+        <div id="aceptar-opciones-list" style="display: flex; flex-direction: column; gap: 8px; margin-top: 6px;">
+          <!-- Radio buttons dinámicos -->
+        </div>
+      </div>
+
+      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 14px;">
+        <div class="form-group">
+          <label style="font-size: 11px; font-weight: 500; color: var(--mac-text-secondary); text-transform: uppercase;">% IVA Aplicado</label>
+          <input type="number" id="aceptar-iva" class="form-control" value="21" step="0.5" min="0" max="100" oninput="actualizarPreviewAceptar()">
+        </div>
+        <div class="form-group">
+          <label style="font-size: 11px; font-weight: 500; color: var(--mac-text-secondary); text-transform: uppercase;">% Retención IRPF</label>
+          <input type="number" id="aceptar-irpf" class="form-control" value="0" step="0.5" min="0" max="100" oninput="actualizarPreviewAceptar()">
+        </div>
+      </div>
+
+      <div style="margin-top: 12px; display: flex; align-items: center; justify-content: space-between; background: var(--mac-sidebar-bg); border: 1px solid var(--mac-separator-subtle); border-radius: 6px; padding: 8px 12px;">
+        <div>
+          <span style="font-size: 11px; font-weight: 600; color: var(--mac-text-secondary); text-transform: uppercase;">Régimen de IVA</span>
+          <div style="font-size: 11px; color: var(--mac-text-tertiary); margin-top: 1px;">Con IVA general o régimen exento</div>
+        </div>
+        <div class="mac-segmented-control" id="modal-aceptar-segmented-iva" role="group">
+          <button type="button" class="segment-btn active" id="btn-aceptar-con-iva" onclick="setAceptarSinIva(false)">Con IVA</button>
+          <button type="button" class="segment-btn segment-sin-iva" id="btn-aceptar-sin-iva" onclick="setAceptarSinIva(true)">Sin IVA</button>
+        </div>
+        <input type="hidden" id="aceptar-sin-iva" value="0">
+      </div>
+
+      <div id="aceptar-preview-totales" style="background: var(--mac-sidebar-bg); border: 1px solid var(--mac-separator-subtle); border-radius: 6px; padding: 10px 14px; margin-top: 14px; font-size: 12px;">
+        <div style="display:flex; justify-content:space-between; margin-bottom: 3px;">
+          <span style="color:var(--mac-text-secondary);">Subtotal Opción:</span>
+          <strong id="aceptar-preview-base">0,00 €</strong>
+        </div>
+        <div style="display:flex; justify-content:space-between; margin-bottom: 3px;">
+          <span style="color:var(--mac-text-secondary);">IVA Calculado:</span>
+          <span id="aceptar-preview-iva" style="color:var(--mac-text-primary);">0,00 €</span>
+        </div>
+        <div style="display:flex; justify-content:space-between; margin-bottom: 3px;">
+          <span style="color:var(--mac-text-secondary);">Retención IRPF:</span>
+          <span id="aceptar-preview-irpf" style="color:var(--mac-system-red);">0,00 €</span>
+        </div>
+        <div style="display:flex; justify-content:space-between; border-top:1px solid var(--mac-separator); padding-top:6px; margin-top:6px;">
+          <span style="font-weight:600; color:var(--mac-text-primary);">Total Estimado:</span>
+          <strong id="aceptar-preview-total" style="font-size:14px; color:var(--mac-accent);">0,00 €</strong>
+        </div>
+      </div>
+
+      <div class="modal-footer" style="padding-top: 18px; margin-top: 16px; border-top: 1px solid var(--mac-separator-subtle); display: flex; justify-content: flex-end; gap: 8px;">
+        <button type="button" class="btn-native" onclick="cerrarModalAceptar()">Cancelar</button>
+        <button type="button" class="btn-native" id="btn-guardar-aceptar" onclick="ejecutarAceptarPresupuesto(false, event)">Guardar como Aceptado</button>
+        <button type="button" class="btn-native btn-primary" id="btn-aceptar-y-facturar" onclick="ejecutarAceptarPresupuesto(true, event)">Aceptar y Facturar Ahora…</button>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block statusbar %}
+<footer class="mac-statusbar">
+  <div class="statusbar-item">
+    <span id="status-presupuestos-count">Cargando presupuestos...</span>
+  </div>
+  <div class="statusbar-item" id="presupuestos-pagination-container">
+  </div>
+</footer>
+{% endblock %}
+
+{% block scripts %}
+<script>
+  let presupuestosCache = [];
+  let _presupuestosPagination = null;
+  let _presupuestosCurrentPage = 1;
+  let _presupuestosPageSize = 25;
+  let _currentConvertirData = null;
+  let _currentAceptarData = null;
+
+  document.addEventListener('DOMContentLoaded', () => {
+    cargarPresupuestos(1);
+
+    const searchInput = document.getElementById('busqueda-presupuestos');
+    let timeoutSearch = null;
+    searchInput.addEventListener('input', () => {
+      clearTimeout(timeoutSearch);
+      timeoutSearch = setTimeout(() => cargarPresupuestos(1), 250);
+    });
+
+    document.getElementById('filtro-estado-presupuesto')?.addEventListener('change', () => cargarPresupuestos(1));
+    document.getElementById('btn-refrescar-presupuestos')?.addEventListener('click', () => cargarPresupuestos(1));
+  });
+
+  async function cargarPresupuestos(page = 1) {
+    _presupuestosCurrentPage = page;
+    const q = document.getElementById('busqueda-presupuestos').value.trim();
+    const estado = document.getElementById('filtro-estado-presupuesto').value;
+    const tbody = document.getElementById('presupuestos-tbody');
+
+    try {
+      tbody.innerHTML = `<tr><td colspan="8" style="text-align:center; padding: 32px; color: var(--mac-text-tertiary);">Cargando presupuestos...</td></tr>`;
+      let url = `/api/presupuestos?paginated=true&page=${_presupuestosCurrentPage}&page_size=${_presupuestosPageSize}&`;
+      if (q) url += `q=${encodeURIComponent(q)}&`;
+      if (estado) url += `estado=${encodeURIComponent(estado)}&`;
+
+      const res = await fetch(url);
+      if (!res.ok) throw new Error('Error al cargar presupuestos');
+      const data = await res.json();
+      presupuestosCache = data.items || [];
+
+      if (presupuestosCache.length === 0) {
+        tbody.innerHTML = `
+          <tr>
+            <td colspan="8" style="text-align: center; padding: 40px; color: var(--mac-text-tertiary);">
+              No se encontraron presupuestos que coincidan con la búsqueda.
+            </td>
+          </tr>
+        `;
+        const countEl = document.getElementById('status-presupuestos-count');
+        if (countEl) countEl.textContent = '0 presupuestos';
+        if (_presupuestosPagination) {
+          _presupuestosPagination.render({ page: 1, pageSize: _presupuestosPageSize, total: 0, totalPages: 1 });
+        }
+        return;
+      }
+
+      const countEl = document.getElementById('status-presupuestos-count');
+      if (countEl) countEl.textContent = `${data.total} presupuesto${data.total === 1 ? '' : 's'}`;
+
+      if (!_presupuestosPagination && window.MacPagination) {
+        _presupuestosPagination = new MacPagination({
+          container: 'presupuestos-pagination-container',
+          initialPageSize: _presupuestosPageSize,
+          onPageChange: (newPage) => cargarPresupuestos(newPage),
+          onPageSizeChange: (newSize) => {
+            _presupuestosPageSize = newSize;
+            cargarPresupuestos(1);
+          }
+        });
+      }
+      if (_presupuestosPagination) {
+        _presupuestosPagination.render({
+          page: data.page,
+          pageSize: data.page_size,
+          total: data.total,
+          totalPages: data.total_pages
+        });
+      }
+
+      tbody.innerHTML = presupuestosCache.map(p => {
+        const estadoClass = (p.estado || 'borrador').toLowerCase();
+        const esAceptado = p.estado === 'Aceptado';
+        const esFacturado = p.estado === 'Facturado';
+
+        let rangoTotalHtml = '';
+        if ((esAceptado || esFacturado) && p.opcion_aprobada_total !== null && p.opcion_aprobada_total !== undefined) {
+          rangoTotalHtml = `
+            <div style="font-weight: 700; color: ${esAceptado ? 'var(--mac-system-green)' : 'var(--mac-text-primary)'};">
+              ${formatCurrency(p.opcion_aprobada_total)}
+            </div>
+            <div style="font-size: 10px; color: var(--mac-text-secondary); text-transform: uppercase; font-weight: normal;">
+              ${escapeHtml(p.opcion_aprobada_nombre || 'Opción Aprobada')}
+            </div>
+          `;
+        } else {
+          const rangoStr = p.total_minimo === p.total_maximo 
+            ? formatCurrency(p.total_minimo)
+            : `${formatCurrency(p.total_minimo)} – ${formatCurrency(p.total_maximo)}`;
+          rangoTotalHtml = `<span style="font-weight: 600;">${rangoStr}</span>`;
+        }
+
+        let badgeFactura = '<span style="color: var(--mac-text-tertiary); font-size: 12px;">—</span>';
+        if (p.numero_factura) {
+          badgeFactura = `<a href="/api/facturas/${p.factura_id}/pdf" target="_blank" style="color: var(--mac-accent); text-decoration:none; font-weight:600;" title="Ver PDF de la factura">${p.numero_factura}</a>`;
+        } else if (esAceptado) {
+          badgeFactura = `
+            <button type="button" class="btn-native" style="height: 22px; font-size: 11px; padding: 0 8px; color: var(--mac-accent); border-color: rgba(0,102,204,0.35); background: #F0F7FF; font-weight: 600; display: inline-flex; align-items: center; gap: 4px;" onclick="abrirModalConvertir(${p.id}, event)" title="Facturar opción aprobada">
+              <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 11 12 14 22 4"></polyline><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"></path></svg>
+              Facturar…
+            </button>
+          `;
+        }
+
+        let nifBadge = p.cliente_nif 
+          ? `<span style="font-family: monospace; font-size: 11px; color: var(--mac-text-secondary);">${p.cliente_nif}</span>` 
+          : `<span style="font-size: 11px; color: var(--mac-text-tertiary);">Particular</span>`;
+
+        return `
+          <tr style="${esAceptado ? 'background: rgba(52, 199, 89, 0.025);' : ''}">
+            <td style="font-weight: 500; font-family: monospace; color: var(--mac-text-primary);">
+              ${p.numero_presupuesto}
+            </td>
+            <td>
+              <div style="font-weight: 500;">${escapeHtml(p.cliente_nombre || 'Cliente sin asignar')}</div>
+              <div>${nifBadge}</div>
+            </td>
+            <td>${formatDate(p.fecha)}</td>
+            <td>
+              <div style="font-weight: 500; max-width: 240px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${escapeHtml(p.titulo || 'Propuesta de diseño')}</div>
+              ${esAceptado && p.opcion_aprobada_nombre ? `
+                <div style="font-size: 11px; color: var(--mac-system-green); margin-top: 3px; display: inline-flex; align-items: center; gap: 4px; background: rgba(52, 199, 89, 0.12); padding: 1px 7px; border-radius: 4px; font-weight: 500; max-width: 240px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
+                  <span style="font-weight: 700;">✓</span> Aceptada: <strong>${escapeHtml(p.opcion_aprobada_nombre.split('·')[0].trim())}</strong>
+                </div>
+              ` : ''}
+            </td>
+            <td style="text-align: right;">${rangoTotalHtml}</td>
+            <td>
+              <span class="status-badge" style="${esAceptado ? 'color: var(--mac-system-green); font-weight: 600;' : ''}">
+                <span class="status-dot ${estadoClass}"></span>
+                ${p.estado}
+              </span>
+              ${esAceptado && p.opcion_aprobada_nombre ? `
+                <div style="font-size: 10px; color: var(--mac-text-secondary); margin-top: 2px; font-weight: 500;">
+                  ✓ ${escapeHtml(p.opcion_aprobada_nombre.split('·')[0].trim())}
+                </div>
+              ` : ''}
+            </td>
+            <td style="white-space: nowrap;">${badgeFactura}</td>
+            <td style="text-align: right; white-space: nowrap;">
+              <div style="display: inline-flex; gap: 4px; align-items: center; justify-content: flex-end;">
+                <a href="/api/presupuestos/${p.id}/pdf" target="_blank" class="btn-native" style="height: 22px; font-size: 11px; padding: 0 6px;" title="Ver PDF del presupuesto">
+                  PDF
+                </a>
+                ${p.estado === 'Facturado' ? `
+                  <button type="button" class="btn-native" style="height: 22px; font-size: 11px; padding: 0 6px;" data-id="${p.id}" data-numero="${escapeHtml(p.numero_presupuesto)}" data-factura="${escapeHtml(p.numero_factura || '')}" onclick="onBtnEditarPresupuestoFacturado(this)" title="Editar presupuesto facturado">
+                    Editar
+                  </button>
+                ` : `
+                  <a href="/presupuestos/${p.id}/editar" class="btn-native" style="height: 22px; font-size: 11px; padding: 0 6px;" title="Editar">
+                    Editar
+                  </a>
+                `}
+                <button type="button" class="btn-native" style="height: 22px; font-size: 11px; padding: 0 6px;" data-id="${p.id}" data-numero="${escapeHtml(p.numero_presupuesto)}" onclick="onBtnAbrirVersionesPresupuesto(this)" title="Historial de versiones y reversión">
+                  Versiones
+                </button>
+                <div class="dropdown-actions-wrapper" style="position: relative; display: inline-block;">
+                  <button type="button" class="btn-native ${p.estado !== 'Facturado' ? 'btn-primary' : ''}" style="height: 22px; font-size: 11px; padding: 0 8px; display: inline-flex; align-items: center; gap: 4px;" onclick="toggleMenuAcciones(event, ${p.id})">
+                    Acciones
+                    <svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"></polyline></svg>
+                  </button>
+                  <div id="menu-acciones-${p.id}" class="mac-dropdown-menu" style="display: none; position: absolute; right: 0; top: 100%; margin-top: 4px; z-index: 100; min-width: 190px; background: #FFFFFF; border: 1px solid var(--mac-separator); border-radius: 8px; box-shadow: 0 4px 16px rgba(0,0,0,0.12); padding: 4px; text-align: left;">
+                    ${p.estado !== 'Facturado' ? `
+                      <button type="button" class="mac-dropdown-item" onclick="abrirModalAceptar(${p.id})" style="display: flex; align-items: center; gap: 8px; width: 100%; padding: 6px 10px; font-size: 12px; font-weight: 500; border: none; background: transparent; border-radius: 4px; cursor: pointer; color: var(--mac-text-primary);">
+                        <span style="color: var(--mac-system-green); font-weight: 700;">✓</span> Aceptar propuesta…
+                      </button>
+                      <button type="button" class="mac-dropdown-item" onclick="abrirModalConvertir(${p.id}, event)" style="display: flex; align-items: center; gap: 8px; width: 100%; padding: 6px 10px; font-size: 12px; font-weight: 500; border: none; background: transparent; border-radius: 4px; cursor: pointer; color: var(--mac-text-primary);">
+                        <span>💳</span> Facturar…
+                      </button>
+                      <button type="button" class="mac-dropdown-item" onclick="cambiarEstadoDirecto(${p.id}, 'Rechazado')" style="display: flex; align-items: center; gap: 8px; width: 100%; padding: 6px 10px; font-size: 12px; font-weight: 500; border: none; background: transparent; border-radius: 4px; cursor: pointer; color: var(--mac-text-primary);">
+                        <span style="color: var(--mac-system-red); font-weight: 700;">✕</span> Marcar como Rechazado
+                      </button>
+                      <button type="button" class="mac-dropdown-item" onclick="cambiarEstadoDirecto(${p.id}, 'Enviado')" style="display: flex; align-items: center; gap: 8px; width: 100%; padding: 6px 10px; font-size: 12px; font-weight: 500; border: none; background: transparent; border-radius: 4px; cursor: pointer; color: var(--mac-text-primary);">
+                        <span>✉️</span> Marcar como Enviado
+                      </button>
+                      ${p.estado === 'Aceptado' ? `
+                        <button type="button" class="mac-dropdown-item" data-id="${p.id}" data-numero="${escapeHtml(p.numero_presupuesto)}" data-factura="" onclick="onBtnReabrirPresupuesto(this)" style="display: flex; align-items: center; gap: 8px; width: 100%; padding: 6px 10px; font-size: 12px; font-weight: 500; border: none; background: transparent; border-radius: 4px; cursor: pointer; color: var(--mac-accent);">
+                          <span>↩️</span> Reabrir y volver a Borrador…
+                        </button>
+                      ` : `
+                        <button type="button" class="mac-dropdown-item" onclick="cambiarEstadoDirecto(${p.id}, 'Borrador')" style="display: flex; align-items: center; gap: 8px; width: 100%; padding: 6px 10px; font-size: 12px; font-weight: 500; border: none; background: transparent; border-radius: 4px; cursor: pointer; color: var(--mac-text-primary);">
+                          <span>📝</span> Marcar como Borrador
+                        </button>
+                      `}
+                      <div style="height: 1px; background: var(--mac-separator); margin: 4px 0;"></div>
+                      <a href="/api/presupuestos/${p.id}/pdf?download=true" download="${escapeHtml(p.numero_presupuesto)}.pdf" class="mac-dropdown-item" style="display: flex; align-items: center; gap: 8px; width: 100%; padding: 6px 10px; font-size: 12px; font-weight: 500; border: none; background: transparent; border-radius: 4px; cursor: pointer; color: var(--mac-text-primary); text-decoration: none;">
+                        <span>📥</span> Descargar PDF
+                      </a>
+                      <div style="height: 1px; background: var(--mac-separator); margin: 4px 0;"></div>
+                      <button type="button" class="mac-dropdown-item item-danger" data-id="${p.id}" data-numero="${escapeHtml(p.numero_presupuesto)}" onclick="onBtnEliminarPresupuesto(this)" style="display: flex; align-items: center; gap: 8px; width: 100%; padding: 6px 10px; font-size: 12px; font-weight: 500; border: none; background: transparent; border-radius: 4px; cursor: pointer; color: var(--mac-system-red);">
+                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
+                        Mover a la papelera…
+                      </button>
+                    ` : `
+                      <div style="padding: 6px 10px; font-size: 11px; color: var(--mac-text-secondary); border-bottom: 1px solid var(--mac-separator-subtle); margin-bottom: 4px;">
+                        Factura emitida: <strong style="color: var(--mac-accent);">${escapeHtml(p.numero_factura || 'Facturado')}</strong>
+                      </div>
+                      <a href="/api/presupuestos/${p.id}/pdf?download=true" download="${escapeHtml(p.numero_presupuesto)}.pdf" class="mac-dropdown-item" style="display: flex; align-items: center; gap: 8px; width: 100%; padding: 6px 10px; font-size: 12px; font-weight: 500; border: none; background: transparent; border-radius: 4px; cursor: pointer; color: var(--mac-text-primary); text-decoration: none;">
+                        <span>📥</span> Descargar PDF
+                      </a>
+                      <button type="button" class="mac-dropdown-item" data-id="${p.id}" data-numero="${escapeHtml(p.numero_presupuesto)}" data-factura="${escapeHtml(p.numero_factura || '')}" onclick="onBtnReabrirPresupuesto(this)" style="display: flex; align-items: center; gap: 8px; width: 100%; padding: 6px 10px; font-size: 12px; font-weight: 500; border: none; background: transparent; border-radius: 4px; cursor: pointer; color: var(--mac-accent);">
+                        <span>↩️</span> Reabrir y volver a Borrador…
+                      </button>
+                      <div style="height: 1px; background: var(--mac-separator); margin: 4px 0;"></div>
+                      <button type="button" class="mac-dropdown-item item-danger" data-id="${p.id}" data-numero="${escapeHtml(p.numero_presupuesto)}" onclick="onBtnEliminarPresupuesto(this)" style="display: flex; align-items: center; gap: 8px; width: 100%; padding: 6px 10px; font-size: 12px; font-weight: 500; border: none; background: transparent; border-radius: 4px; cursor: pointer; color: var(--mac-system-red);">
+                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
+                        Mover a la papelera…
+                      </button>
+                    `}
+                  </div>
+                </div>
+              </div>
+            </td>
+          </tr>
+        `;
+      }).join('');
+      if (typeof window.actualizarContadoresSidebar === 'function') {
+        window.actualizarContadoresSidebar();
+      }
+    } catch (err) {
+      tbody.innerHTML = `<tr><td colspan="8" style="text-align: center; color: var(--mac-system-red); padding: 24px;">${err.message}</td></tr>`;
+    }
+  }
+
+  async function abrirModalConvertir(presupuestoId, event) {
+    if (event && event.shiftKey) {
+      window.__presupuestoFacturarSuerte = true;
+    }
+    document.querySelectorAll('.mac-dropdown-menu').forEach(el => el.style.display = 'none');
+    document.getElementById('convertir-alert-container').innerHTML = '';
+    document.getElementById('convertir-presupuesto-id').value = presupuestoId;
+
+    try {
+      const res = await fetch(`/api/presupuestos/${presupuestoId}`);
+      if (!res.ok) throw new Error('No se pudo cargar el presupuesto');
+      const data = await res.json();
+      _currentConvertirData = data;
+
+      const container = document.getElementById('convertir-opciones-list');
+      if (!data.opciones || data.opciones.length === 0) {
+        container.innerHTML = '<p style="color:var(--mac-system-red); font-size:12px;">El presupuesto no tiene opciones definidas.</p>';
+      } else {
+        const selectedId = data.opcion_aprobada_id;
+        container.innerHTML = data.opciones.map((op, idx) => `
+          <label style="display:flex; align-items:center; gap:8px; padding:8px 12px; border:1px solid var(--mac-separator-subtle); border-radius:6px; cursor:pointer; background:var(--mac-sidebar-bg);">
+            <input type="radio" name="opcion_seleccionada" value="${op.id}" ${(selectedId ? op.id === selectedId : idx === 0) ? 'checked' : ''} onchange="actualizarPreviewConvertir()">
+            <div style="flex:1;">
+              <strong>${escapeHtml(op.nombre_opcion || op.nombre || ('Opción ' + (idx + 1)))}</strong>
+              ${(op.descripcion_corta || op.subtitulo) ? `<div style="font-size:11px; color:var(--mac-text-secondary);">${escapeHtml(op.descripcion_corta || op.subtitulo)}</div>` : ''}
+            </div>
+            <strong style="color:var(--mac-accent);">${formatCurrency(op.total)}</strong>
+          </label>
+        `).join('');
+      }
+
+      const ivaInput = document.getElementById('convertir-iva');
+      const irpfInput = document.getElementById('convertir-irpf');
+
+      const esSinIva = Boolean(data.sin_iva || data.porcentaje_iva === 0);
+      setConvertirSinIva(esSinIva);
+      if (ivaInput && !esSinIva) {
+        ivaInput.value = (data.porcentaje_iva !== undefined && data.porcentaje_iva !== null) ? data.porcentaje_iva : 21;
+      }
+      if (irpfInput) {
+        irpfInput.value = (data.porcentaje_irpf !== undefined && data.porcentaje_irpf !== null) ? data.porcentaje_irpf : 0;
+      }
+
+      actualizarPreviewConvertir();
+      document.getElementById('modal-convertir-factura').classList.add('show');
+    } catch (err) {
+      if (window.Toast) Toast.error('Error', err.message);
+    }
+  }
+
+  function cerrarModalConvertir() {
+    document.getElementById('modal-convertir-factura').classList.remove('show');
+  }
+
+  function setConvertirSinIva(esSinIva) {
+    const hidden = document.getElementById('convertir-sin-iva');
+    if (hidden) hidden.value = esSinIva ? '1' : '0';
+
+    const btnCon = document.getElementById('btn-convertir-con-iva');
+    const btnSin = document.getElementById('btn-convertir-sin-iva');
+    if (btnCon) btnCon.classList.toggle('active', !esSinIva);
+    if (btnSin) btnSin.classList.toggle('active', esSinIva);
+
+    const ivaInput = document.getElementById('convertir-iva');
+    if (ivaInput) {
+      ivaInput.disabled = esSinIva;
+      if (esSinIva) {
+        ivaInput.dataset.prevVal = ivaInput.value || '21';
+        ivaInput.value = 0;
+      } else {
+        ivaInput.value = ivaInput.dataset.prevVal || '21';
+      }
+    }
+    actualizarPreviewConvertir();
+  }
+
+  function setAceptarSinIva(esSinIva) {
+    const hidden = document.getElementById('aceptar-sin-iva');
+    if (hidden) hidden.value = esSinIva ? '1' : '0';
+
+    const btnCon = document.getElementById('btn-aceptar-con-iva');
+    const btnSin = document.getElementById('btn-aceptar-sin-iva');
+    if (btnCon) btnCon.classList.toggle('active', !esSinIva);
+    if (btnSin) btnSin.classList.toggle('active', esSinIva);
+
+    const ivaInput = document.getElementById('aceptar-iva');
+    if (ivaInput) {
+      ivaInput.disabled = esSinIva;
+      if (esSinIva) {
+        ivaInput.dataset.prevVal = ivaInput.value || '21';
+        ivaInput.value = 0;
+      } else {
+        ivaInput.value = ivaInput.dataset.prevVal || '21';
+      }
+    }
+    actualizarPreviewAceptar();
+  }
+
+  function toggleSinIvaConvertir(checked) {
+    setConvertirSinIva(checked);
+  }
+
+  function toggleSinIvaAceptar(checked) {
+    setAceptarSinIva(checked);
+  }
+
+  function actualizarPreviewConvertir() {
+    if (!_currentConvertirData || !_currentConvertirData.opciones) return;
+    const opcionRadio = document.querySelector('input[name="opcion_seleccionada"]:checked');
+    if (!opcionRadio) return;
+    const opcionId = parseInt(opcionRadio.value, 10);
+    const op = _currentConvertirData.opciones.find(o => o.id === opcionId);
+    if (!op) return;
+
+    const sinIva = document.getElementById('convertir-sin-iva')?.value === '1';
+    const ivaPct = sinIva ? 0 : (parseFloat(document.getElementById('convertir-iva')?.value) || 0);
+    const irpfPct = parseFloat(document.getElementById('convertir-irpf')?.value) || 0;
+
+    let baseTotal = op.total || 0;
+    if (Array.isArray(op.lineas) && op.lineas.length > 0) {
+      baseTotal = op.lineas.reduce((acc, l) => {
+        const tot = l.total !== undefined ? l.total : (l.cantidad * l.precio_unitario);
+        return acc + tot;
+      }, 0);
+    }
+
+    const ivaTotal = Math.round(baseTotal * (ivaPct / 100) * 100) / 100;
+    const irpfTotal = Math.round(baseTotal * (irpfPct / 100) * 100) / 100;
+    const totalFinal = Math.round((baseTotal + ivaTotal - irpfTotal) * 100) / 100;
+
+    const elBase = document.getElementById('convertir-preview-base');
+    const elIva = document.getElementById('convertir-preview-iva');
+    const elIrpf = document.getElementById('convertir-preview-irpf');
+    const elTotal = document.getElementById('convertir-preview-total');
+
+    if (elBase) elBase.textContent = formatCurrency(baseTotal);
+    if (elIva) elIva.textContent = sinIva ? '0,00 € (0% Exento)' : `${formatCurrency(ivaTotal)} (${ivaPct}%)`;
+    if (elIrpf) elIrpf.textContent = irpfPct > 0 ? `-${formatCurrency(irpfTotal)} (${irpfPct}%)` : '0,00 €';
+    if (elTotal) elTotal.textContent = formatCurrency(totalFinal);
+  }
+
+  function actualizarPreviewAceptar() {
+    if (!_currentAceptarData || !_currentAceptarData.opciones) return;
+    const opcionRadio = document.querySelector('input[name="opcion_aceptar_seleccionada"]:checked');
+    if (!opcionRadio) return;
+    const opcionId = parseInt(opcionRadio.value, 10);
+    const op = _currentAceptarData.opciones.find(o => o.id === opcionId);
+    if (!op) return;
+
+    const sinIva = document.getElementById('aceptar-sin-iva')?.value === '1';
+    const ivaPct = sinIva ? 0 : (parseFloat(document.getElementById('aceptar-iva')?.value) || 0);
+    const irpfPct = parseFloat(document.getElementById('aceptar-irpf')?.value) || 0;
+
+    let baseTotal = op.total || 0;
+    if (Array.isArray(op.lineas) && op.lineas.length > 0) {
+      baseTotal = op.lineas.reduce((acc, l) => {
+        const tot = l.total !== undefined ? l.total : (l.cantidad * l.precio_unitario);
+        return acc + tot;
+      }, 0);
+    }
+
+    const ivaTotal = Math.round(baseTotal * (ivaPct / 100) * 100) / 100;
+    const irpfTotal = Math.round(baseTotal * (irpfPct / 100) * 100) / 100;
+    const totalFinal = Math.round((baseTotal + ivaTotal - irpfTotal) * 100) / 100;
+
+    const elBase = document.getElementById('aceptar-preview-base');
+    const elIva = document.getElementById('aceptar-preview-iva');
+    const elIrpf = document.getElementById('aceptar-preview-irpf');
+    const elTotal = document.getElementById('aceptar-preview-total');
+
+    if (elBase) elBase.textContent = formatCurrency(baseTotal);
+    if (elIva) elIva.textContent = sinIva ? '0,00 € (0% Exento)' : `${formatCurrency(ivaTotal)} (${ivaPct}%)`;
+    if (elIrpf) elIrpf.textContent = irpfPct > 0 ? `-${formatCurrency(irpfTotal)} (${irpfPct}%)` : '0,00 €';
+    if (elTotal) elTotal.textContent = formatCurrency(totalFinal);
+  }
+
+  async function ejecutarConversionFactura(event) {
+    const presupuestoId = document.getElementById('convertir-presupuesto-id').value;
+    const opcionRadio = document.querySelector('input[name="opcion_seleccionada"]:checked');
+    const sinIva = document.getElementById('convertir-sin-iva')?.value === '1';
+    const iva = sinIva ? 0 : (parseFloat(document.getElementById('convertir-iva').value) || 0);
+    const irpf = parseFloat(document.getElementById('convertir-irpf').value) || 0;
+
+    if (!opcionRadio) {
+      if (window.Toast) Toast.warning('Atención', 'Debe seleccionar una opción aprobada.');
+      else alert('Debe seleccionar una opción aprobada.');
+      return;
+    }
+
+    const payload = {
+      opcion_id: parseInt(opcionRadio.value, 10),
+      tipo_facturacion: 'total',
+      porcentaje_iva: iva,
+      porcentaje_irpf: irpf,
+      sin_iva: sinIva
+    };
+
+    const btn = document.getElementById('btn-confirmar-convertir');
+    btn.disabled = true;
+    btn.textContent = 'Procesando…';
+
+    try {
+      const res = await fetch(`/api/presupuestos/${presupuestoId}/convertir-factura`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+
+      if (!res.ok) {
+        const err = await res.json();
+        throw new Error(err.detail || 'Error al convertir presupuesto');
+      }
+
+      const resData = await res.json();
+      cerrarModalConvertir();
+
+      const esSuerte = (Math.random() < 0.05) || (event && event.shiftKey) || window.__presupuestoFacturarSuerte || window.__forceMoneyRain;
+      window.__presupuestoFacturarSuerte = false;
+
+      if (esSuerte && window.triggerMoneyRain) {
+        window.triggerMoneyRain();
+        if (window.Toast) {
+          Toast.success('🍀 ¡Día de Suerte!', `Factura ${resData.numero_factura} emitida con lluvia de la fortuna. ¡A celebrarlo!`);
+        }
+      } else {
+        if (window.Toast) {
+          Toast.success('Factura Emitida', `Se ha generado la factura ${resData.numero_factura}`);
+        }
+      }
+
+      cargarPresupuestos();
+      if (typeof window.actualizarContadoresSidebar === 'function') {
+        window.actualizarContadoresSidebar();
+      }
+      if (resData.redirect_url) {
+        const redirectDelay = esSuerte ? 3600 : 800;
+        setTimeout(() => {
+          window.open(resData.redirect_url, '_blank');
+        }, redirectDelay);
+      }
+    } catch (err) {
+      if (window.Toast) {
+        Toast.error('Error', err.message);
+      } else {
+        alert(err.message);
+      }
+    } finally {
+      btn.disabled = false;
+      btn.textContent = 'Generar Factura Oficial';
+    }
+  }
+
+  function toggleMenuAcciones(event, id) {
+    event.stopPropagation();
+    const menu = document.getElementById(`menu-acciones-${id}`);
+    const isOpen = menu && menu.style.display === 'block';
+    document.querySelectorAll('.mac-dropdown-menu').forEach(el => el.style.display = 'none');
+    if (menu && !isOpen) {
+      menu.style.display = 'block';
+    }
+  }
+
+  document.addEventListener('click', (e) => {
+    if (!e.target.closest('.dropdown-actions-wrapper')) {
+      document.querySelectorAll('.mac-dropdown-menu').forEach(el => el.style.display = 'none');
+    }
+  });
+
+  async function abrirModalAceptar(presupuestoId) {
+    document.querySelectorAll('.mac-dropdown-menu').forEach(el => el.style.display = 'none');
+    document.getElementById('aceptar-presupuesto-id').value = presupuestoId;
+    try {
+      const res = await fetch(`/api/presupuestos/${presupuestoId}`);
+      if (!res.ok) throw new Error('No se pudo cargar el presupuesto');
+      const data = await res.json();
+      _currentAceptarData = data;
+
+      const container = document.getElementById('aceptar-opciones-list');
+      if (!data.opciones || data.opciones.length === 0) {
+        container.innerHTML = '<p style="color:var(--mac-system-red); font-size:12px;">El presupuesto no tiene opciones definidas.</p>';
+      } else {
+        const selectedId = data.opcion_aprobada_id;
+        container.innerHTML = data.opciones.map((op, idx) => `
+          <label style="display:flex; align-items:center; gap:8px; padding:8px 12px; border:1px solid var(--mac-separator-subtle); border-radius:6px; cursor:pointer; background:var(--mac-sidebar-bg);">
+            <input type="radio" name="opcion_aceptar_seleccionada" value="${op.id}" ${(selectedId ? op.id === selectedId : idx === 0) ? 'checked' : ''} onchange="actualizarPreviewAceptar()">
+            <div style="flex:1;">
+              <strong>${escapeHtml(op.nombre_opcion || op.nombre || ('Opción ' + (idx + 1)))}</strong>
+              ${(op.descripcion_corta || op.subtitulo) ? `<div style="font-size:11px; color:var(--mac-text-secondary);">${escapeHtml(op.descripcion_corta || op.subtitulo)}</div>` : ''}
+            </div>
+            <strong style="color:var(--mac-accent);">${formatCurrency(op.total)}</strong>
+          </label>
+        `).join('');
+      }
+      const ivaInput = document.getElementById('aceptar-iva');
+      const irpfInput = document.getElementById('aceptar-irpf');
+
+      const esSinIva = Boolean(data.sin_iva || data.porcentaje_iva === 0);
+      setAceptarSinIva(esSinIva);
+      if (ivaInput && !esSinIva) {
+        ivaInput.value = (data.porcentaje_iva !== undefined && data.porcentaje_iva !== null) ? data.porcentaje_iva : 21;
+      }
+      if (irpfInput) {
+        irpfInput.value = (data.porcentaje_irpf !== undefined && data.porcentaje_irpf !== null) ? data.porcentaje_irpf : 0;
+      }
+
+      actualizarPreviewAceptar();
+      document.getElementById('modal-aceptar-presupuesto').classList.add('show');
+    } catch (err) {
+      if (window.Toast) Toast.error('Error', err.message);
+    }
+  }
+
+  function cerrarModalAceptar() {
+    document.getElementById('modal-aceptar-presupuesto').classList.remove('show');
+  }
+
+  async function ejecutarAceptarPresupuesto(facturarInmediato, event) {
+    const presupuestoId = document.getElementById('aceptar-presupuesto-id').value;
+    const opcionRadio = document.querySelector('input[name="opcion_aceptar_seleccionada"]:checked');
+    if (!opcionRadio) {
+      if (window.Toast) Toast.warning('Atención', 'Seleccione la opción aprobada.');
+      return;
+    }
+    const opcionId = parseInt(opcionRadio.value, 10);
+    const btnGuardar = document.getElementById('btn-guardar-aceptar');
+    const btnFacturar = document.getElementById('btn-aceptar-y-facturar');
+    if (btnGuardar) btnGuardar.disabled = true;
+    if (btnFacturar) btnFacturar.disabled = true;
+
+    const sinIva = document.getElementById('aceptar-sin-iva')?.value === '1';
+    const iva = sinIva ? 0 : (parseFloat(document.getElementById('aceptar-iva')?.value) || 0);
+    const irpf = parseFloat(document.getElementById('aceptar-irpf')?.value) || 0;
+
+    try {
+      await apiFetch(`/api/presupuestos/${presupuestoId}/estado`, {
+        method: 'PATCH',
+        body: {
+          estado: 'Aceptado',
+          opcion_aprobada_id: opcionId,
+          porcentaje_iva: iva,
+          porcentaje_irpf: irpf,
+          sin_iva: sinIva
+        }
+      });
+      cerrarModalAceptar();
+
+      const esSuerte = (Math.random() < 0.05) || (event && event.shiftKey) || window.__forceMoneyRain;
+
+      if (facturarInmediato) {
+        // Emitir directamente la factura sin requerir un segundo modal redundante
+        const convRes = await apiFetch(`/api/presupuestos/${presupuestoId}/convertir-factura`, {
+          method: 'POST',
+          body: {
+            opcion_id: opcionId,
+            tipo_facturacion: 'total',
+            porcentaje_iva: iva,
+            porcentaje_irpf: irpf,
+            sin_iva: sinIva
+          }
+        });
+
+        if (esSuerte && window.triggerMoneyRain) {
+          window.triggerMoneyRain();
+          if (window.Toast) {
+            Toast.success('🍀 ¡Día de Suerte!', `Factura ${convRes.numero_factura} emitida con lluvia de la fortuna. ¡A celebrarlo!`);
+          }
+        } else {
+          if (window.Toast) {
+            Toast.success('Factura Emitida', `Se ha generado la factura ${convRes.numero_factura} (Sin IVA: ${sinIva ? 'Sí' : 'No'}).`);
+          }
+        }
+
+        if (convRes.redirect_url) {
+          const redirectDelay = esSuerte ? 3600 : 800;
+          setTimeout(() => {
+            window.open(convRes.redirect_url, '_blank');
+          }, redirectDelay);
+        }
+      } else {
+        if (esSuerte && window.triggerMoneyRain) {
+          window.triggerMoneyRain();
+          if (window.Toast) {
+            Toast.success('🍀 ¡Día de Suerte!', 'Presupuesto aceptado con lluvia de la fortuna.');
+          }
+        } else {
+          if (window.Toast) Toast.success('Propuesta Aceptada', 'El presupuesto ha sido marcado como aceptado.');
+        }
+      }
+
+      await cargarPresupuestos();
+      if (typeof window.actualizarContadoresSidebar === 'function') {
+        window.actualizarContadoresSidebar();
+      }
+    } catch (err) {
+      if (window.Toast) Toast.error('Error', err.message);
+    } finally {
+      if (btnGuardar) btnGuardar.disabled = false;
+      if (btnFacturar) btnFacturar.disabled = false;
+    }
+  }
+
+  async function cambiarEstadoDirecto(presupuestoId, nuevoEstado, event) {
+    document.querySelectorAll('.mac-dropdown-menu').forEach(el => el.style.display = 'none');
+    try {
+      await apiFetch(`/api/presupuestos/${presupuestoId}/estado`, {
+        method: 'PATCH',
+        body: { estado: nuevoEstado }
+      });
+      if (nuevoEstado === 'Aceptado') {
+        const esSuerte = (Math.random() < 0.05) || (event && event.shiftKey) || window.__forceMoneyRain;
+        if (esSuerte && window.triggerMoneyRain) {
+          window.triggerMoneyRain();
+          if (window.Toast) Toast.success('🍀 ¡Día de Suerte!', 'Presupuesto aceptado con lluvia de la fortuna.');
+        } else {
+          if (window.Toast) Toast.success('Estado actualizado', `El presupuesto se ha marcado como ${nuevoEstado}.`);
+        }
+      } else {
+        if (window.Toast) Toast.success('Estado actualizado', `El presupuesto se ha marcado como ${nuevoEstado}.`);
+      }
+      cargarPresupuestos();
+    } catch (err) {
+      if (window.Toast) Toast.error('Error', err.message);
+    }
+  }
+
+  function onBtnEditarPresupuestoFacturado(el) {
+    confirmarEditarPresupuestoFacturado(Number(el.dataset.id), el.dataset.numero || '', el.dataset.factura || '');
+  }
+  function onBtnAbrirVersionesPresupuesto(el) {
+    VersionHistoryManager.abrir('presupuesto', Number(el.dataset.id), el.dataset.numero || '');
+  }
+  function onBtnReabrirPresupuesto(el) {
+    confirmarReabrirPresupuesto(Number(el.dataset.id), el.dataset.numero || '', el.dataset.factura || '');
+  }
+  function onBtnEliminarPresupuesto(el) {
+    confirmarEliminarPresupuesto(Number(el.dataset.id), el.dataset.numero || '');
+  }
+
+  async function confirmarReabrirPresupuesto(id, numero, numFactura) {
+    document.querySelectorAll('.mac-dropdown-menu').forEach(el => el.style.display = 'none');
+    const fnConfirm = window.showMacConfirmDialog || window.showMacConfirm;
+    const msg = numFactura
+      ? `El presupuesto volverá al estado Borrador absorbiendo cualquier modificación o producto que hayas editado en la factura. La factura emitida asociada (${numFactura}) se moverá a la papelera.`
+      : `El presupuesto volverá al estado Borrador y se desvinculará la opción aprobada.`;
+    
+    let ok = false;
+    if (typeof fnConfirm === 'function') {
+      ok = await fnConfirm({
+        title: `¿Reabrir presupuesto ${numero}?`,
+        message: msg,
+        confirmText: 'Reabrir a Borrador',
+        isDestructive: false
+      });
+    } else {
+      ok = confirm(`¿Reabrir el presupuesto ${numero} a Borrador?\n\n${msg}`);
+    }
+    if (!ok) return;
+
+    try {
+      const res = await apiFetch(`/api/presupuestos/${id}/estado`, {
+        method: 'PATCH',
+        body: { estado: 'Borrador' }
+      });
+      if (window.Toast) {
+        if (res && res.factura_absorbida) {
+          Toast.success('Presupuesto reabierto', `El presupuesto ha vuelto a Borrador absorbiendo los cambios de ${numFactura}.`);
+        } else {
+          Toast.success('Presupuesto reabierto', `El presupuesto ${numero} ha vuelto a Borrador. Ya puedes seleccionar o facturar otra opción.`);
+        }
+      }
+      cargarPresupuestos();
+    } catch (err) {
+      if (window.Toast) Toast.error('Error al reabrir', err.message);
+    }
+  }
+
+  async function confirmarEditarPresupuestoAceptado(id, numero) {
+    document.querySelectorAll('.mac-dropdown-menu').forEach(el => el.style.display = 'none');
+    const fnConfirm = window.showMacConfirmDialog || window.showMacConfirm;
+    const msg = `El presupuesto ${numero} está actualmente en estado "Aceptado".\n\nPara modificar partidas, precios o datos del dossier, debe volver primero a estado "Borrador" (se desvinculará la opción aprobada).\n\n¿Deseas volver a Borrador y abrirlo para editar?`;
+    let ok = false;
+    if (typeof fnConfirm === 'function') {
+      ok = await fnConfirm({
+        title: `¿Editar presupuesto ${numero}?`,
+        message: msg,
+        confirmText: 'Volver a Borrador y Editar',
+        isDestructive: false
+      });
+    } else {
+      ok = confirm(`¿Editar el presupuesto ${numero}?\n\n${msg}`);
+    }
+    if (!ok) return;
+
+    try {
+      await apiFetch(`/api/presupuestos/${id}/estado`, {
+        method: 'PATCH',
+        body: { estado: 'Borrador', motivo: 'Reabierto a Borrador para edición' }
+      });
+      window.location.href = `/presupuestos/${id}/editar`;
+    } catch (err) {
+      if (window.Toast) Toast.error('Error al reabrir', err.message);
+      else alert(err.message);
+    }
+  }
+
+  async function confirmarEditarPresupuestoFacturado(id, numero, numFactura) {
+    document.querySelectorAll('.mac-dropdown-menu').forEach(el => el.style.display = 'none');
+    const fnConfirm = window.showMacConfirmDialog || window.showMacConfirm;
+    const msg = `El presupuesto ${numero} ya ha sido facturado${numFactura ? ` (Factura: ${numFactura})` : ''}.\n\nAl reabrir a Borrador, el presupuesto absorberá cualquier modificación realizada en la factura, y la factura se desvinculará y se moverá a la papelera de forma segura.\n\n¿Deseas continuar y abrirlo para editar?`;
+    let ok = false;
+    if (typeof fnConfirm === 'function') {
+      ok = await fnConfirm({
+        title: `¿Modificar presupuesto facturado ${numero}?`,
+        message: msg,
+        confirmText: 'Reabrir a Borrador y Editar',
+        isDestructive: false
+      });
+    } else {
+      ok = confirm(`¿Modificar presupuesto facturado ${numero}?\n\n${msg}`);
+    }
+    if (!ok) return;
+
+    try {
+      await apiFetch(`/api/presupuestos/${id}/estado`, {
+        method: 'PATCH',
+        body: { estado: 'Borrador', motivo: `Reabierto a Borrador para edición (desvinculada factura ${numFactura || ''})` }
+      });
+      window.location.href = `/presupuestos/${id}/editar`;
+    } catch (err) {
+      if (window.Toast) Toast.error('Error al reabrir', err.message);
+      else alert(err.message);
+    }
+  }
+
+  async function confirmarEliminarPresupuesto(id, numero) {
+    document.querySelectorAll('.mac-dropdown-menu').forEach(el => el.style.display = 'none');
+    const fnConfirm = window.showMacConfirmDialog || window.showMacConfirm;
+    let ok = false;
+    if (typeof fnConfirm === 'function') {
+      ok = await fnConfirm({
+        title: `¿Mover el presupuesto ${numero} a la papelera?`,
+        message: 'Podrás recuperarlo en cualquier momento desde la Papelera de reciclaje.',
+        confirmText: 'Mover a la papelera',
+        isDestructive: true
+      });
+    } else {
+      ok = confirm(`¿Mover el presupuesto ${numero} a la papelera?`);
+    }
+    if (!ok) return;
+
+    try {
+      await apiFetch(`/api/presupuestos/${id}`, { method: 'DELETE' });
+      if (window.Toast) Toast.success('Presupuesto eliminado', `El presupuesto ${numero} se ha movido a la papelera.`);
+      cargarPresupuestos();
+    } catch (err) {
+      if (window.Toast) Toast.error('Error al eliminar', err.message);
+    }
+  }
+
+</script>
+{% endblock %}

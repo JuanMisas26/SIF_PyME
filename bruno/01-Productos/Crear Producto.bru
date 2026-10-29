@@ -1,0 +1,148 @@
+meta {
+  name: Crear Producto
+  type: http
+  seq: 2
+}
+
+post {
+  url: {{baseUrl}}/api/productos
+  body: json
+  auth: none
+}
+
+body:json {
+  [
+    {
+      "nombre": "Tarjetón invitación con ilustración",
+      "descripcion": "A5. Papel 300 gr verjurado premium",
+      "precio_unitario_base": 1.85,
+      "porcentaje_iva": 21.0,
+      "aplica_irpf": false,
+      "escalados": [
+        {
+          "cantidad_minima": 1.0,
+          "cantidad_maxima": null,
+          "precio_unitario": 1.85
+        }
+      ],
+      "variantes": []
+    },
+    {
+      "nombre": "Sobre estándar",
+      "descripcion": "Papel premium C5",
+      "precio_unitario_base": 0.72,
+      "porcentaje_iva": 21.0,
+      "aplica_irpf": false,
+      "escalados": [
+        {
+          "cantidad_minima": 1.0,
+          "cantidad_maxima": null,
+          "precio_unitario": 0.72
+        }
+      ],
+      "variantes": []
+    },
+    {
+      "nombre": "Fondo sobre estampado colección",
+      "descripcion": "Papel 120 gr verjurado premium",
+      "precio_unitario_base": 0.70,
+      "porcentaje_iva": 21.0,
+      "aplica_irpf": false,
+      "escalados": [
+        {
+          "cantidad_minima": 1.0,
+          "cantidad_maxima": null,
+          "precio_unitario": 0.70
+        }
+      ],
+      "variantes": []
+    },
+    {
+      "nombre": "Mapa",
+      "descripcion": "165 x 120 mm. Papel 300 gr verjurado premium",
+      "precio_unitario_base": 1.5625,
+      "porcentaje_iva": 21.0,
+      "aplica_irpf": false,
+      "escalados": [
+        {
+          "cantidad_minima": 1.0,
+          "cantidad_maxima": null,
+          "precio_unitario": 1.5625
+        }
+      ],
+      "variantes": []
+    },
+    {
+      "nombre": "Lacre",
+      "descripcion": "Metal de 25 mm",
+      "precio_unitario_base": 47.00,
+      "porcentaje_iva": 21.0,
+      "aplica_irpf": false,
+      "escalados": [
+        {
+          "cantidad_minima": 1.0,
+          "cantidad_maxima": null,
+          "precio_unitario": 47.00
+        }
+      ],
+      "variantes": []
+    },
+    {
+      "nombre": "Aplicación lacre",
+      "descripcion": "Varios colores disponibles",
+      "precio_unitario_base": 0.45,
+      "porcentaje_iva": 21.0,
+      "aplica_irpf": false,
+      "escalados": [
+        {
+          "cantidad_minima": 1.0,
+          "cantidad_maxima": null,
+          "precio_unitario": 0.45
+        }
+      ],
+      "variantes": [
+        {
+          "tipo_atributo": "Color",
+          "valor": "Varios colores disponibles",
+          "precio_adicional": 0.0
+        }
+      ]
+    },
+    {
+      "nombre": "Paniculata",
+      "descripcion": "Paniculata blanca",
+      "precio_unitario_base": 0.55,
+      "porcentaje_iva": 21.0,
+      "aplica_irpf": false,
+      "escalados": [
+        {
+          "cantidad_minima": 1.0,
+          "cantidad_maxima": null,
+          "precio_unitario": 0.55
+        }
+      ],
+      "variantes": [
+        {
+          "tipo_atributo": "Color",
+          "valor": "Blanca",
+          "precio_adicional": 0.0
+        }
+      ]
+    },
+    {
+      "nombre": "Sobre artesanal",
+      "descripcion": "C5. Papel artesanal",
+      "precio_unitario_base": 1.50,
+      "porcentaje_iva": 21.0,
+      "aplica_irpf": false,
+      "escalados": [
+        {
+          "cantidad_minima": 1.0,
+          "cantidad_maxima": null,
+          "precio_unitario": 1.50
+        }
+      ],
+      "variantes": []
+    }
+  ]
+}

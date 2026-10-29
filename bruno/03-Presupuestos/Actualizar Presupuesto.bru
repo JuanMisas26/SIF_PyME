@@ -1,0 +1,18 @@
+meta {
+  name: Actualizar Presupuesto
+  type: http
+  seq: 5
+}
+
+put {
+  url: {{baseUrl}}/api/presupuestos/1
+  body: json
+  auth: none
+}
+
+body:json {
+  {
+    "estado": "Aceptado",
+    "observaciones": "El cliente acepta la Opción A"
+  }
+}

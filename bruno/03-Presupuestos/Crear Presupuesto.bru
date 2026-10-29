@@ -1,0 +1,51 @@
+meta {
+  name: Crear Presupuesto
+  type: http
+  seq: 4
+}
+
+post {
+  url: {{baseUrl}}/api/presupuestos
+  body: json
+  auth: none
+}
+
+body:json {
+  {
+    "numero_presupuesto": "2026-10-18-silvia-y-oscar",
+    "cliente_id": 1,
+    "fecha": "2026-10-18",
+    "fecha_validez": "2026-11-18",
+    "titulo": "Presupuesto para invitaciones",
+    "subtitulo": "Precios para el diseño de invitaciones de boda",
+    "estado": "Borrador",
+    "opciones": [
+      {
+        "nombre_opcion": "Opción A - Sobre artesanal",
+        "orden": 1,
+        "lineas": [
+          { "descripcion": "Tarjetón invitación con ilustración", "detalle_material": "A5 Papel 300 gr verjurado premium", "cantidad": 100, "precio_unitario": 1.85 },
+          { "descripcion": "Sobre artesanal", "detalle_material": "C5 Papel artesanal", "cantidad": 100, "precio_unitario": 1.50 },
+          { "descripcion": "Fondo sobre estampado colección", "detalle_material": "Papel 120 gr verjurado premium", "cantidad": 100, "precio_unitario": 0.70 },
+          { "descripcion": "Mapa", "detalle_material": "165x120 mm papel 300 gr verjurado premium", "cantidad": 80, "precio_unitario": 1.5625 },
+          { "descripcion": "Lacre", "detalle_material": "Metal 25 mm", "cantidad": 1, "precio_unitario": 47.00 },
+          { "descripcion": "Aplicación lacre", "detalle_material": "Varios colores disponibles", "cantidad": 100, "precio_unitario": 0.45 },
+          { "descripcion": "Paniculata", "detalle_material": "Blanca", "cantidad": 100, "precio_unitario": 0.55 }
+        ]
+      },
+      {
+        "nombre_opcion": "Opción B - Sobre estándar",
+        "orden": 2,
+        "lineas": [
+          { "descripcion": "Tarjetón invitación con ilustración", "detalle_material": "A5 Papel 300 gr verjurado premium", "cantidad": 100, "precio_unitario": 1.85 },
+          { "descripcion": "Sobre estándar", "detalle_material": "Papel premium C5", "cantidad": 100, "precio_unitario": 0.72 },
+          { "descripcion": "Fondo sobre estampado colección", "detalle_material": "Papel 120 gr verjurado premium", "cantidad": 100, "precio_unitario": 0.70 },
+          { "descripcion": "Mapa", "detalle_material": "165x120 mm papel 300 gr verjurado premium", "cantidad": 80, "precio_unitario": 1.5625 },
+          { "descripcion": "Lacre", "detalle_material": "Metal 25 mm", "cantidad": 1, "precio_unitario": 47.00 },
+          { "descripcion": "Aplicación lacre", "detalle_material": "Varios colores disponibles", "cantidad": 100, "precio_unitario": 0.45 },
+          { "descripcion": "Paniculata", "detalle_material": "Blanca", "cantidad": 100, "precio_unitario": 0.55 }
+        ]
+      }
+    ]
+  }
+}

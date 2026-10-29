@@ -1,0 +1,241 @@
+{% extends "base.html" %}
+{% block title %}Facturas — SIF PyME macOS{% endblock %}
+
+{% block content %}
+<!-- Área de Trabajo Principal (NSTableView) -->
+<main class="main-content">
+  
+  <!-- Barra de Filtros Nativa de macOS -->
+  <div class="filter-bar">
+    <div class="filter-group">
+      <span class="filter-label">Estado:</span>
+      <select class="native-select" id="filter-select-estado" aria-label="Filtrar por estado">
+        <option value="">Todos los estados</option>
+        <option value="Emitida">Emitidas</option>
+        <option value="Pagada">Pagadas</option>
+        <option value="Vencida">Vencidas</option>
+        <option value="Borrador">Borradores</option>
+        <option value="Anulada">Anuladas</option>
+      </select>
+
+      <span class="filter-label" style="margin-left: 8px;">IVA:</span>
+      <div class="mac-segmented-control" id="filter-segmented-iva" role="group" aria-label="Filtrar por IVA">
+        <button type="button" class="segment-btn active" data-val="" title="Mostrar todas las facturas">Todas</button>
+        <button type="button" class="segment-btn" data-val="CON_IVA" title="Filtrar facturas con IVA">Con IVA</button>
+        <button type="button" class="segment-btn segment-sin-iva" data-val="SIN_IVA" title="Filtrar facturas sin IVA (Exentas)">Sin IVA</button>
+      </div>
+
+      <span class="filter-label" style="margin-left: 8px;">Año:</span>
+      <select class="native-select" id="filter-select-anio" aria-label="Filtrar por año">
+        <!-- Rellenado dinámicamente según ejercicio fiscal y datos -->
+      </select>
+
+      <span class="filter-label" style="margin-left: 6px;">Periodo:</span>
+      <select class="native-select" id="filter-select-periodo" aria-label="Filtrar por periodo">
+        <option value="ANUAL">Año Completo</option>
+        <option value="T1">1T (Ene - Mar)</option>
+        <option value="T2">2T (Abr - Jun)</option>
+        <option value="T3">3T (Jul - Sep)</option>
+        <option value="T4">4T (Oct - Dic)</option>
+        <option value="M01">Enero</option>
+        <option value="M02">Febrero</option>
+        <option value="M03">Marzo</option>
+        <option value="M04">Abril</option>
+        <option value="M05">Mayo</option>
+        <option value="M06">Junio</option>
+        <option value="M07">Julio</option>
+        <option value="M08">Agosto</option>
+        <option value="M09">Septiembre</option>
+        <option value="M10">Octubre</option>
+        <option value="M11">Noviembre</option>
+        <option value="M12">Diciembre</option>
+      </select>
+    </div>
+
+    <div class="filter-group filter-group-right">
+      <div class="search-field" style="margin: 0;">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="11" cy="11" r="8"></circle>
+          <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+        </svg>
+        <input type="text" class="search-input" id="mac-search-input" placeholder="Buscar factura..." aria-label="Buscador de facturas">
+      </div>
+      <button type="button" class="btn-native" id="btn-toggle-inspector" onclick="toggleInspector()" title="Mostrar u ocultar panel de detalle de factura" style="height: 24px; padding: 0 8px; font-size: 11px; display: inline-flex; align-items: center; gap: 4px;">
+        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><line x1="15" y1="3" x2="15" y2="21"></line></svg>
+        <span>Detalle</span>
+      </button>
+    </div>
+  </div>
+
+  <!-- Tabla Estilo macOS (NSTableView con selección de fila) -->
+  <div class="table-container">
+    <table class="mac-table" id="mac-invoices-table">
+      <thead>
+        <tr>
+          <th class="sortable">Número ▾</th>
+          <th class="sortable">Fecha</th>
+          <th class="sortable">Cliente</th>
+          <th class="sortable">NIF / CIF</th>
+          <th class="sortable" style="text-align: right;">Base Imponible</th>
+          <th class="sortable" style="text-align: right;">Total</th>
+          <th class="sortable">Estado</th>
+        </tr>
+      </thead>
+      <tbody id="mac-invoices-tbody">
+        <tr>
+          <td colspan="7" style="text-align: center; padding: 40px; color: var(--mac-text-tertiary);">
+            Conectando con la base de datos...
+          </td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+</main>
+
+<!-- Panel Inspector Lateral (AppKit NSInspector) -->
+<aside class="inspector" id="mac-inspector-panel" aria-label="Inspector de detalle de factura">
+  <div class="inspector-header">
+    <div style="display: flex; align-items: center; gap: 6px;">
+      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline></svg>
+      <span>Detalle de Factura</span>
+    </div>
+    <button type="button" class="btn-icon" onclick="toggleInspector()" title="Ocultar detalle de factura" style="font-size: 11px; padding: 2px 6px;">✕</button>
+  </div>
+
+  <div class="inspector-content">
+    <div class="prop-group">
+      <span class="prop-label">IDENTIFICADOR</span>
+      <span class="prop-value-bold" id="detail-id">—</span>
+    </div>
+
+    <div class="prop-group">
+      <span class="prop-label">CLIENTE</span>
+      <input type="text" class="prop-input" id="detail-client" readonly>
+    </div>
+
+    <div class="prop-group">
+      <span class="prop-label">NIF / CIF</span>
+      <input type="text" class="prop-input" id="detail-cif" readonly>
+    </div>
+
+    <div class="prop-group">
+      <span class="prop-label">FECHA DE EMISIÓN</span>
+      <input type="text" class="prop-input" id="detail-date" readonly>
+    </div>
+
+    <div class="prop-group">
+      <span class="prop-label">ESTADO DE COBRO</span>
+      <select class="native-select" id="detail-status" style="width: 100%;">
+        <option value="Borrador">Borrador</option>
+        <option value="Emitida">Emitida</option>
+        <option value="Pagada">Pagada</option>
+        <option value="Vencida">Vencida</option>
+        <option value="Anulada">Anulada</option>
+      </select>
+    </div>
+
+    <div class="prop-group">
+      <span class="prop-label">RÉGIMEN FISCAL</span>
+      <div id="detail-regimen" style="font-size: 12px; font-weight: 500; margin-top: 2px;">—</div>
+    </div>
+
+    <!-- <div class="switch-row" style="margin-top: 4px;">
+      <span class="prop-label" style="font-size: 12px; color: var(--mac-text-primary); text-transform: none;">Recordatorio Automático</span>
+      <label class="native-switch">
+        <input type="checkbox" checked>
+        <span class="slider"></span>
+      </label>
+    </div> -->
+
+    <div style="border-top: 1px solid var(--mac-separator-subtle); padding-top: 10px; margin-top: 4px;">
+      <div class="prop-group" style="margin-bottom: 6px;">
+        <span class="prop-label">BASE IMPONIBLE</span>
+        <span style="font-size: 13px; font-weight: 500; color: var(--mac-text-secondary);" id="detail-base">0,00 €</span>
+      </div>
+      <div class="prop-group">
+        <span class="prop-label">TOTAL FACTURADO</span>
+        <span class="prop-value-bold" id="detail-total" style="font-size: 18px; color: var(--mac-accent);">0,00 €</span>
+      </div>
+    </div>
+
+    <div style="display: flex; flex-direction: column; gap: 8px; margin-top: auto; padding-top: 16px;">
+      <button class="btn-native btn-primary" id="btn-inspector-preview" type="button" title="Ver / Descargar documento oficial en PDF">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+          <polyline points="14 2 14 8 20 8"></polyline>
+          <line x1="16" y1="13" x2="8" y2="13"></line>
+          <line x1="16" y1="17" x2="8" y2="17"></line>
+        </svg>
+        Vista Previa PDF
+      </button>
+      <button class="btn-native" id="btn-inspector-edit" type="button" title="Editar factura seleccionada">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
+          <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
+        </svg>
+        Editar Factura
+      </button>
+      <button class="btn-native" id="btn-inspector-versiones" type="button" title="Consultar historial de versiones y reversión" onclick="abrirVersionesFacturaSeleccionada()">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="12" cy="12" r="10"></circle>
+          <polyline points="12 6 12 12 16 14"></polyline>
+        </svg>
+        Historial de Versiones…
+      </button>
+      <button class="btn-native btn-danger" id="btn-inspector-delete" type="button" title="Eliminar factura seleccionada">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <polyline points="3 6 5 6 21 6"></polyline>
+          <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+        </svg>
+        Eliminar Factura…
+      </button>
+    </div>
+  </div>
+</aside>
+{% endblock %}
+ 
+{% block statusbar %}
+<footer class="mac-statusbar">
+  <div class="statusbar-item">
+    <span id="status-facturas-count">Cargando facturas...</span>
+    <span>•</span>
+    <span>Base imponible: <strong id="status-base-sum">0,00 €</strong></span>
+    <span>•</span>
+    <span>Total pág: <strong id="status-total-sum">0,00 €</strong></span>
+  </div>
+  <div class="statusbar-item" id="facturas-pagination-container">
+  </div>
+</footer>
+{% endblock %}
+
+{% block scripts %}
+<script src="/static/js/macos_controller.js?v=20261026_02"></script>
+<script>
+function abrirVersionesFacturaSeleccionada() {
+  const facturaId = (typeof _selectedFacturaId !== 'undefined' && _selectedFacturaId)
+    ? _selectedFacturaId
+    : (window._selectedFacturaId || null);
+
+  if (!facturaId) {
+    if (window.Toast) Toast.warning('Seleccione una factura', 'Haga clic en una factura de la lista para consultar su historial de versiones.');
+    return;
+  }
+  const lista = (typeof _currentFacturas !== 'undefined' && Array.isArray(_currentFacturas))
+    ? _currentFacturas
+    : (window._currentFacturas || []);
+  const f = lista.find(x => x.id === facturaId);
+  const num = f ? f.numero_factura : `FAC-${facturaId}`;
+  if (window.VersionHistoryManager) {
+    window.VersionHistoryManager.abrir('factura', facturaId, num);
+  }
+}
+function toggleInspector() {
+  const panel = document.getElementById('mac-inspector-panel');
+  if (panel) {
+    panel.classList.toggle('collapsed');
+  }
+}
+window.toggleInspector = toggleInspector;
+window.abrirVersionesFacturaSeleccionada = abrirVersionesFacturaSeleccionada;
+</script>
+{% endblock %}

@@ -1,0 +1,635 @@
+{% extends "base.html" %}
+{% block title %}Ajustes — SIF PyME macOS{% endblock %}
+
+{% block content %}
+<main class="main-content" style="padding: 0; display: flex; flex-direction: column; flex: 1; min-height: 0; overflow-y: auto;">
+  
+  <!-- Sub-barra de acciones nativa macOS -->
+  <div class="filter-bar">
+    <div class="filter-group">
+      <span class="filter-label" style="font-weight: 600; color: var(--mac-text-primary);">Ajustes del Sistema</span>
+      <span class="filter-label" style="color: var(--mac-text-tertiary);">•</span>
+      <span class="filter-label" style="color: var(--mac-text-secondary);">Datos fiscales del emisor y preferencias</span>
+    </div>
+
+    <div class="filter-group">
+      <div id="config-status-badge">
+        <span class="status-badge" style="font-size: 11px;">
+          <span class="status-dot pendiente"></span> Comprobando…
+        </span>
+      </div>
+      <button type="button" class="btn-native btn-primary" id="btn-guardar-config">
+        Guardar Cambios
+      </button>
+    </div>
+  </div>
+
+  <div style="padding: 24px; max-width: 900px; margin: 0 auto; width: 100%;">
+    <form id="form-configuracion" novalidate>
+      
+      <!-- Card: Datos de la Empresa -->
+      <div class="card mb-4" style="background:#FFFFFF; border: 1px solid var(--mac-separator); border-radius: 8px; box-shadow: 0 1px 2px rgba(0,0,0,0.04); margin-bottom: 20px;">
+        <div class="card-header" style="height: 38px; padding: 0 16px; background: #F8F8F9; border-bottom: 1px solid var(--mac-separator); display: flex; align-items: center;">
+          <h2 class="card-title" style="font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.02em; color: var(--mac-text-secondary); margin: 0;">
+            Datos Fiscales del Emisor
+          </h2>
+        </div>
+        <div class="card-body" style="padding: 18px 20px;">
+          <div class="form-row">
+            <div class="form-group">
+              <label style="font-size: 11px; font-weight: 500; color: var(--mac-text-secondary); text-transform: uppercase;">Nombre o Razón Social *</label>
+              <input type="text" class="form-control" name="nombre" id="cfg-nombre" required placeholder="Mi Empresa S.L.">
+            </div>
+            <div class="form-group">
+              <label style="font-size: 11px; font-weight: 500; color: var(--mac-text-secondary); text-transform: uppercase;">NIF / CIF *</label>
+              <input type="text" class="form-control font-mono" name="nif" id="cfg-nif" required placeholder="B12345678">
+            </div>
+          </div>
+
+          <div class="form-group mt-2">
+            <label style="font-size: 11px; font-weight: 500; color: var(--mac-text-secondary); text-transform: uppercase;">Dirección Fiscal</label>
+            <input type="text" class="form-control" name="direccion" id="cfg-direccion" placeholder="Calle Mayor, 1">
+          </div>
+
+          <div class="form-row mt-2">
+            <div class="form-group">
+              <label style="font-size: 11px; font-weight: 500; color: var(--mac-text-secondary); text-transform: uppercase;">Código Postal</label>
+              <input type="text" class="form-control" name="codigo_postal" id="cfg-codigo_postal" placeholder="28001">
+            </div>
+            <div class="form-group">
+              <label style="font-size: 11px; font-weight: 500; color: var(--mac-text-secondary); text-transform: uppercase;">Ciudad</label>
+              <input type="text" class="form-control" name="ciudad" id="cfg-ciudad" placeholder="Madrid">
+            </div>
+            <div class="form-group">
+              <label style="font-size: 11px; font-weight: 500; color: var(--mac-text-secondary); text-transform: uppercase;">Provincia</label>
+              <input type="text" class="form-control" name="provincia" id="cfg-provincia" placeholder="Madrid">
+            </div>
+          </div>
+
+          <div class="form-row mt-2">
+            <div class="form-group">
+              <label style="font-size: 11px; font-weight: 500; color: var(--mac-text-secondary); text-transform: uppercase;">Teléfono de Contacto</label>
+              <input type="text" class="form-control" name="telefono" id="cfg-telefono" placeholder="+34 600 000 000">
+            </div>
+            <div class="form-group">
+              <label style="font-size: 11px; font-weight: 500; color: var(--mac-text-secondary); text-transform: uppercase;">Email para Documentos</label>
+              <input type="email" class="form-control" name="email" id="cfg-email" placeholder="facturacion@miempresa.com">
+            </div>
+            <div class="form-group">
+              <label style="font-size: 11px; font-weight: 500; color: var(--mac-text-secondary); text-transform: uppercase;">Sitio Web</label>
+              <input type="text" class="form-control" name="web" id="cfg-web" placeholder="www.miempresa.com">
+            </div>
+          </div>
+
+          <div class="form-group mt-2">
+            <label style="font-size: 11px; font-weight: 500; color: var(--mac-text-secondary); text-transform: uppercase;">IBAN Bancario (Transferencias)</label>
+            <input type="text" class="form-control font-mono" name="iban" id="cfg-iban" placeholder="ES00 0000 0000 0000 0000 0000">
+          </div>
+        </div>
+      </div>
+
+      <!-- Card: Parámetros Predeterminados -->
+      <div class="card mb-4" style="background:#FFFFFF; border: 1px solid var(--mac-separator); border-radius: 8px; box-shadow: 0 1px 2px rgba(0,0,0,0.04); margin-bottom: 20px;">
+        <div class="card-header" style="height: 38px; padding: 0 16px; background: #F8F8F9; border-bottom: 1px solid var(--mac-separator); display: flex; align-items: center;">
+          <h2 class="card-title" style="font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.02em; color: var(--mac-text-secondary); margin: 0;">
+            Parámetros de Facturación
+          </h2>
+        </div>
+        <div class="card-body" style="padding: 18px 20px;">
+          <div class="form-row">
+            <div class="form-group">
+              <label style="font-size: 11px; font-weight: 500; color: var(--mac-text-secondary); text-transform: uppercase;">Serie Facturas Con IVA</label>
+              <input type="text" class="form-control font-mono" name="serie_defecto" id="cfg-serie_defecto" placeholder="Factura Nº">
+              <small style="font-size: 11px; color: var(--mac-text-tertiary); margin-top: 4px; display: block;">Ej: Factura Nº (genera 'Factura Nº 1', 'Factura Nº 2'…)</small>
+            </div>
+            <div class="form-group">
+              <label style="font-size: 11px; font-weight: 500; color: var(--mac-text-secondary); text-transform: uppercase;">Nº Inicial (Con IVA)</label>
+              <input type="number" min="1" step="1" class="form-control font-mono" name="numero_inicio_factura" id="cfg-numero_inicio_factura" placeholder="1">
+              <small style="font-size: 11px; color: var(--mac-text-tertiary); margin-top: 4px; display: block;">Número inicial correlativo para facturas con IVA</small>
+            </div>
+          </div>
+          <div class="form-row mt-3">
+            <div class="form-group">
+              <label style="font-size: 11px; font-weight: 500; color: var(--mac-text-secondary); text-transform: uppercase;">Serie Facturas Sin IVA (Exentas)</label>
+              <input type="text" class="form-control font-mono" name="serie_sin_iva" id="cfg-serie_sin_iva" placeholder="Factura Sin IVA Nº">
+              <small style="font-size: 11px; color: var(--mac-text-tertiary); margin-top: 4px; display: block;">Ej: Factura Sin IVA Nº (genera 'Factura Sin IVA Nº 1', 'Factura Sin IVA Nº 2'…)</small>
+            </div>
+            <div class="form-group">
+              <label style="font-size: 11px; font-weight: 500; color: var(--mac-text-secondary); text-transform: uppercase;">Nº Inicial (Sin IVA)</label>
+              <input type="number" min="1" step="1" class="form-control font-mono" name="numero_inicio_factura_sin_iva" id="cfg-numero_inicio_factura_sin_iva" placeholder="1">
+              <small style="font-size: 11px; color: var(--mac-text-tertiary); margin-top: 4px; display: block;">Número inicial correlativo para facturas sin IVA</small>
+            </div>
+          </div>
+          <div class="form-row mt-3">
+            <div class="form-group">
+              <label style="font-size: 11px; font-weight: 500; color: var(--mac-text-secondary); text-transform: uppercase;">IVA Predeterminado (%)</label>
+              <input type="number" step="0.5" min="0" max="100" class="form-control" name="iva_defecto" id="cfg-iva_defecto" placeholder="21.0">
+            </div>
+            <div class="form-group">
+              <label style="font-size: 11px; font-weight: 500; color: var(--mac-text-secondary); text-transform: uppercase;">Retención IRPF (%)</label>
+              <input type="number" step="0.5" min="0" max="100" class="form-control" name="irpf_defecto" id="cfg-irpf_defecto" placeholder="0.0">
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Card: Almacenamiento y Sistema -->
+      <div class="card mb-4" style="background:#FFFFFF; border: 1px solid var(--mac-separator); border-radius: 8px; box-shadow: 0 1px 2px rgba(0,0,0,0.04); margin-bottom: 20px;">
+        <div class="card-header" style="height: 38px; padding: 0 16px; background: #F8F8F9; border-bottom: 1px solid var(--mac-separator); display: flex; align-items: center; justify-content: space-between;">
+          <h2 class="card-title" style="font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.02em; color: var(--mac-text-secondary); margin: 0;">
+            Almacenamiento de Facturas y Sistema
+          </h2>
+          <span style="font-size: 11px; color: var(--mac-text-tertiary);">Rutas y Accesos</span>
+        </div>
+        <div class="card-body" style="padding: 18px 20px;">
+          <div class="form-group">
+            <label style="font-size: 11px; font-weight: 500; color: var(--mac-text-secondary); text-transform: uppercase;">Carpeta de Guardado de PDFs de Facturas</label>
+            <div style="display: flex; gap: 8px; margin-top: 4px;">
+              <input type="text" class="form-control font-mono" name="pdf_storage_dir" id="cfg-pdf_storage_dir" placeholder="~/Documents/Facturas/PDFs" style="flex: 1;">
+              <button type="button" class="btn-native" id="btn-rutas-sugeridas" onclick="mostrarSelectorRutasRapido()" style="white-space: nowrap; height: 32px; font-size: 12px;">
+                Rutas Sugeridas…
+              </button>
+            </div>
+            <small style="font-size: 11px; color: var(--mac-text-tertiary); margin-top: 4px; display: block;">
+              Los archivos PDF se almacenarán organizados por año y mes en esta carpeta.
+            </small>
+          </div>
+
+          <div style="border-top: 1px solid var(--mac-separator-subtle); margin-top: 16px; padding-top: 14px; display: flex; align-items: center; justify-content: space-between;">
+            <div>
+              <div style="font-size: 13px; font-weight: 600; color: var(--mac-text-primary);">Acceso Directo en el Escritorio</div>
+              <div style="font-size: 12px; color: var(--mac-text-secondary);">Crea o regenera el Alias de macOS en tu Escritorio para un acceso rápido.</div>
+            </div>
+            <button type="button" class="btn-native" id="btn-crear-acceso-escritorio" onclick="crearAccesoDirectoEscritorio()" style="height: 30px; font-size: 12px; font-weight: 500;">
+              Crear Acceso en Escritorio
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Card: Textos Editoriales y Condiciones -->
+      <div class="card mb-4" style="background:#FFFFFF; border: 1px solid var(--mac-separator); border-radius: 8px; box-shadow: 0 1px 2px rgba(0,0,0,0.04); margin-bottom: 20px;">
+        <div class="card-header" style="height: 38px; padding: 0 16px; background: #F8F8F9; border-bottom: 1px solid var(--mac-separator); display: flex; align-items: center;">
+          <h2 class="card-title" style="font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.02em; color: var(--mac-text-secondary); margin: 0;">
+            Secciones Editoriales y Documentos
+          </h2>
+        </div>
+        <div class="card-body" style="padding: 18px 20px;">
+          <div class="form-row">
+            <div class="form-group">
+              <label style="font-size: 11px; font-weight: 500; color: var(--mac-text-secondary); text-transform: uppercase;">Redes Sociales / Identificador Web</label>
+              <input type="text" class="form-control" name="presupuesto_instagram" id="cfg-pres-instagram" placeholder="@martamisasdesign">
+            </div>
+            <div class="form-group">
+              <label style="font-size: 11px; font-weight: 500; color: var(--mac-text-secondary); text-transform: uppercase;">Email Pie de Documento</label>
+              <input type="email" class="form-control" name="presupuesto_email" id="cfg-pres-email" placeholder="martamisashiguera@gmail.com">
+            </div>
+          </div>
+
+          <div style="border-top: 1px solid var(--mac-separator-subtle); margin-top: 16px; padding-top: 12px;">
+            <div class="form-row">
+              <div class="form-group">
+                <label style="font-size: 11px; font-weight: 500; color: var(--mac-text-secondary); text-transform: uppercase;">Título de Bienvenida</label>
+                <input type="text" class="form-control" name="presupuesto_bienvenida_titulo" id="cfg-pres-bienvenida-titulo" placeholder="Bienvenidos">
+              </div>
+              <div class="form-group">
+                <label style="font-size: 11px; font-weight: 500; color: var(--mac-text-secondary); text-transform: uppercase;">Subtítulo de Bienvenida</label>
+                <input type="text" class="form-control" name="presupuesto_bienvenida_subtitulo" id="cfg-pres-bienvenida-subtitulo" placeholder="Al proceso creativo de vuestras invitaciones">
+              </div>
+            </div>
+            <div class="form-group mt-2">
+              <label style="font-size: 11px; font-weight: 500; color: var(--mac-text-secondary); text-transform: uppercase;">Carta de Presentación</label>
+              <textarea class="form-control" name="presupuesto_bienvenida_texto" id="cfg-pres-bienvenida-texto" rows="3" placeholder="Texto de bienvenida corporativo…"></textarea>
+            </div>
+          </div>
+
+          <div style="border-top: 1px solid var(--mac-separator-subtle); margin-top: 16px; padding-top: 12px;">
+            <div class="form-row">
+              <div class="form-group">
+                <label style="font-size: 11px; font-weight: 500; color: var(--mac-text-secondary); text-transform: uppercase;">Título de Metodología</label>
+                <input type="text" class="form-control" name="presupuesto_proceso_titulo" id="cfg-pres-proceso-titulo" placeholder="Metodología y Fases">
+              </div>
+              <div class="form-group">
+                <label style="font-size: 11px; font-weight: 500; color: var(--mac-text-secondary); text-transform: uppercase;">Subtítulo de Metodología</label>
+                <input type="text" class="form-control" name="presupuesto_proceso_subtitulo" id="cfg-pres-proceso-subtitulo" placeholder="Fases del servicio y tiempos estimados">
+              </div>
+            </div>
+
+            <div style="display:grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 12px;">
+              <div style="background: var(--mac-sidebar-bg); padding: 10px; border-radius: 6px; border: 1px solid var(--mac-separator-subtle);">
+                <label style="font-size: 11px; font-weight: 600; color: var(--mac-text-primary);">Fase 1: Título</label>
+                <input type="text" class="form-control mb-1" id="cfg-proceso-fase1-titulo" placeholder="Envio de presupuesto y aceptación">
+                <textarea class="form-control font-mono" id="cfg-proceso-fase1-puntos" rows="2" style="font-size: 11px;" placeholder="• Definición de alcance&#10;• Aprobación"></textarea>
+              </div>
+
+              <div style="background: var(--mac-sidebar-bg); padding: 10px; border-radius: 6px; border: 1px solid var(--mac-separator-subtle);">
+                <label style="font-size: 11px; font-weight: 600; color: var(--mac-text-primary);">Fase 2: Título</label>
+                <input type="text" class="form-control mb-1" id="cfg-proceso-fase2-titulo" placeholder="Presentación del diseño">
+                <textarea class="form-control font-mono" id="cfg-proceso-fase2-puntos" rows="2" style="font-size: 11px;" placeholder="• Propuestas de diseño&#10;• Elección de propuesta final"></textarea>
+              </div>
+
+              <div style="background: var(--mac-sidebar-bg); padding: 10px; border-radius: 6px; border: 1px solid var(--mac-separator-subtle);">
+                <label style="font-size: 11px; font-weight: 600; color: var(--mac-text-primary);">Fase 3: Título</label>
+                <input type="text" class="form-control mb-1" id="cfg-proceso-fase3-titulo" placeholder="Envio de propuestas y cambios">
+                <textarea class="form-control font-mono" id="cfg-proceso-fase3-puntos" rows="2" style="font-size: 11px;" placeholder="• Aceptar el diseño&#10;• Enviar nombres de los invitados"></textarea>
+              </div>
+
+              <div style="background: var(--mac-sidebar-bg); padding: 10px; border-radius: 6px; border: 1px solid var(--mac-separator-subtle);">
+                <label style="font-size: 11px; font-weight: 600; color: var(--mac-text-primary);">Fase 4: Título</label>
+                <input type="text" class="form-control mb-1" id="cfg-proceso-fase4-titulo" placeholder="Listas para repartir">
+                <textarea class="form-control font-mono" id="cfg-proceso-fase4-puntos" rows="2" style="font-size: 11px;" placeholder="• Montaje completo&#10;• Entrega de invitaciones"></textarea>
+              </div>
+            </div>
+
+            <div class="form-group mt-2">
+              <label style="font-size: 11px; font-weight: 500; color: var(--mac-text-secondary); text-transform: uppercase;">Compromiso y Filosofía</label>
+              <textarea class="form-control" name="presupuesto_proceso_cierre" id="cfg-pres-proceso-cierre" rows="2" placeholder="Compromiso de calidad y cumplimiento de plazos…"></textarea>
+            </div>
+          </div>
+
+          <div style="border-top: 1px solid var(--mac-separator-subtle); margin-top: 16px; padding-top: 12px;">
+            <div class="form-group">
+              <label style="font-size: 11px; font-weight: 500; color: var(--mac-text-secondary); text-transform: uppercase;">Condiciones al Pie de Facturas</label>
+              <textarea class="form-control" name="factura_condiciones" id="cfg-factura-condiciones" rows="2" placeholder="Factura emitida de acuerdo con la legislación vigente…"></textarea>
+            </div>
+
+            <div class="form-group mt-2">
+              <label style="font-size: 11px; font-weight: 500; color: var(--mac-text-secondary); text-transform: uppercase;">Condiciones al Pie de Presupuestos</label>
+              <textarea class="form-control font-mono" name="presupuesto_condiciones" id="cfg-pres-condiciones" rows="3" style="font-size: 12px;" placeholder="• Validez de la oferta: 30 días&#10;• Forma de pago: 50% anticipo"></textarea>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Card: Copias de Seguridad y Recuperación de Base de Datos -->
+      <div class="card mb-4" style="background:#FFFFFF; border: 1px solid var(--mac-separator); border-radius: 8px; box-shadow: 0 1px 2px rgba(0,0,0,0.04); margin-bottom: 20px;">
+        <div class="card-header" style="height: 42px; padding: 0 16px; background: #F8F8F9; border-bottom: 1px solid var(--mac-separator); display: flex; justify-content: space-between; align-items: center;">
+          <h2 class="card-title" style="font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.02em; color: var(--mac-text-secondary); margin: 0;">
+            Copias de Seguridad del Sistema (Base de Datos)
+          </h2>
+          <button type="button" class="btn-native" id="btn-crear-backup" style="height: 26px; font-size: 11px; padding: 0 10px;" onclick="crearBackupManualUI()">
+            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+              <line x1="12" y1="5" x2="12" y2="19"></line>
+              <line x1="5" y1="12" x2="19" y2="12"></line>
+            </svg>
+            Crear Respaldo Manual
+          </button>
+        </div>
+        <div class="card-body" style="padding: 16px 20px;">
+          <p style="font-size: 12px; color: var(--mac-text-secondary); margin: 0 0 14px 0;">
+            SIF PyME genera instantáneas de seguridad automáticas en cada emisión o modificación contable. Puedes restaurar el sistema a cualquier punto anterior con 1 clic.
+          </p>
+
+          <div style="border: 1px solid var(--mac-separator-subtle); border-radius: 6px; overflow: hidden; max-height: 240px; overflow-y: auto;">
+            <table class="table" style="margin: 0; font-size: 11px;">
+              <thead>
+                <tr style="background: #F9FAFB;">
+                  <th>Archivo de Respaldo</th>
+                  <th>Fecha y Hora</th>
+                  <th style="text-align: right;">Tamaño</th>
+                  <th style="text-align: right; width: 140px;">Acción</th>
+                </tr>
+              </thead>
+              <tbody id="backups-tbody">
+                <tr>
+                  <td colspan="4" style="text-align: center; padding: 20px; color: var(--mac-text-tertiary);">
+                    Cargando copias de seguridad…
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+    </form>
+  </div>
+</main>
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+  cargarConfiguracion();
+  cargarBackupsUI();
+
+  const form = document.getElementById('form-configuracion');
+  if (form) {
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      await guardarConfiguracion();
+    });
+  }
+
+  const btn = document.getElementById('btn-guardar-config');
+  if (btn) {
+    btn.addEventListener('click', async (e) => {
+      e.preventDefault();
+      await guardarConfiguracion();
+    });
+  }
+});
+
+async function cargarConfiguracion() {
+  try {
+    const res = await fetch('/api/configuracion');
+    if (!res.ok) throw new Error('Error al cargar configuración');
+    const data = await res.json();
+    const d = data.datos;
+
+    document.getElementById('cfg-nombre').value = d.nombre || '';
+    document.getElementById('cfg-nif').value = d.nif || '';
+    document.getElementById('cfg-direccion').value = d.direccion || '';
+    document.getElementById('cfg-codigo_postal').value = d.codigo_postal || '';
+    document.getElementById('cfg-ciudad').value = d.ciudad || '';
+    document.getElementById('cfg-provincia').value = d.provincia || '';
+    document.getElementById('cfg-telefono').value = d.telefono || '';
+    document.getElementById('cfg-email').value = d.email || '';
+    document.getElementById('cfg-web').value = d.web || '';
+    document.getElementById('cfg-iban').value = d.iban || '';
+    const elSerie = document.getElementById('cfg-serie_defecto');
+    if (elSerie) elSerie.value = d.serie_defecto || 'Factura Nº';
+    const elInicio = document.getElementById('cfg-numero_inicio_factura');
+    if (elInicio) elInicio.value = d.numero_inicio_factura !== undefined ? d.numero_inicio_factura : 1;
+    const elSerieSinIva = document.getElementById('cfg-serie_sin_iva');
+    if (elSerieSinIva) elSerieSinIva.value = d.serie_sin_iva || 'Factura Sin IVA Nº';
+    const elInicioSinIva = document.getElementById('cfg-numero_inicio_factura_sin_iva');
+    if (elInicioSinIva) elInicioSinIva.value = d.numero_inicio_factura_sin_iva !== undefined ? d.numero_inicio_factura_sin_iva : 1;
+    document.getElementById('cfg-iva_defecto').value = d.iva_defecto !== undefined ? d.iva_defecto : 21.0;
+    document.getElementById('cfg-irpf_defecto').value = d.irpf_defecto !== undefined ? d.irpf_defecto : 0.0;
+    if (document.getElementById('cfg-pdf_storage_dir')) {
+      document.getElementById('cfg-pdf_storage_dir').value = d.pdf_storage_dir || '';
+    }
+
+    actualizarBadgeEstado(data.es_valida);
+
+    // Cargar configuración de documentos
+    const resPres = await fetch('/api/configuracion/presupuesto');
+    if (resPres.ok) {
+      const dp = await resPres.json();
+      document.getElementById('cfg-pres-instagram').value = dp.presupuesto_instagram || '';
+      document.getElementById('cfg-pres-email').value = dp.presupuesto_email || '';
+      document.getElementById('cfg-pres-bienvenida-titulo').value = dp.presupuesto_bienvenida_titulo || '';
+      document.getElementById('cfg-pres-bienvenida-subtitulo').value = dp.presupuesto_bienvenida_subtitulo || '';
+      document.getElementById('cfg-pres-bienvenida-texto').value = dp.presupuesto_bienvenida_texto || '';
+      document.getElementById('cfg-pres-proceso-titulo').value = dp.presupuesto_proceso_titulo || '';
+      document.getElementById('cfg-pres-proceso-subtitulo').value = dp.presupuesto_proceso_subtitulo || '';
+      document.getElementById('cfg-proceso-fase1-titulo').value = dp.proceso_fase1_titulo || '';
+      document.getElementById('cfg-proceso-fase1-puntos').value = dp.proceso_fase1_puntos || '';
+      document.getElementById('cfg-proceso-fase2-titulo').value = dp.proceso_fase2_titulo || '';
+      document.getElementById('cfg-proceso-fase2-puntos').value = dp.proceso_fase2_puntos || '';
+      document.getElementById('cfg-proceso-fase3-titulo').value = dp.proceso_fase3_titulo || '';
+      document.getElementById('cfg-proceso-fase3-puntos').value = dp.proceso_fase3_puntos || '';
+      document.getElementById('cfg-proceso-fase4-titulo').value = dp.proceso_fase4_titulo || '';
+      document.getElementById('cfg-proceso-fase4-puntos').value = dp.proceso_fase4_puntos || '';
+      document.getElementById('cfg-pres-proceso-cierre').value = dp.presupuesto_proceso_cierre || '';
+      document.getElementById('cfg-factura-condiciones').value = dp.factura_condiciones || '';
+      document.getElementById('cfg-pres-condiciones').value = dp.presupuesto_condiciones || '';
+    }
+  } catch (err) {
+    if (window.Toast) Toast.error('Error', 'No se pudo cargar la configuración');
+  }
+}
+
+function actualizarBadgeEstado(esValida) {
+  const badgeEl = document.getElementById('config-status-badge');
+  if (!badgeEl) return;
+  if (esValida) {
+    badgeEl.innerHTML = '<span class="status-badge" style="font-size:11px"><span class="status-dot pagada"></span> Configuración completa</span>';
+  } else {
+    badgeEl.innerHTML = '<span class="status-badge" style="font-size:11px"><span class="status-dot vencida"></span> Pendiente de configurar</span>';
+  }
+}
+
+let isSavingConfig = false;
+async function guardarConfiguracion() {
+  if (isSavingConfig) return;
+  isSavingConfig = true;
+  const inputNombre = document.getElementById('cfg-nombre');
+  const inputNif = document.getElementById('cfg-nif');
+  const nombre = inputNombre ? inputNombre.value.trim() : '';
+  const nif = inputNif ? inputNif.value.trim() : '';
+
+  if (inputNombre) inputNombre.classList.remove('is-invalid');
+  if (inputNif) inputNif.classList.remove('is-invalid');
+
+  if (!nombre || !nif) {
+    if (!nombre && inputNombre) inputNombre.classList.add('is-invalid');
+    if (!nif && inputNif) inputNif.classList.add('is-invalid');
+    if (window.Toast) {
+      Toast.warning('Campos requeridos', 'Indique la razón social y el NIF/CIF del emisor.');
+    } else {
+      alert('Campos requeridos: Indique la razón social y el NIF/CIF del emisor.');
+    }
+    return;
+  }
+
+  const payload = {
+    nombre: nombre,
+    nif: nif,
+    direccion: document.getElementById('cfg-direccion') ? document.getElementById('cfg-direccion').value.trim() : '',
+    codigo_postal: document.getElementById('cfg-codigo_postal') ? document.getElementById('cfg-codigo_postal').value.trim() : '',
+    ciudad: document.getElementById('cfg-ciudad') ? document.getElementById('cfg-ciudad').value.trim() : '',
+    provincia: document.getElementById('cfg-provincia') ? document.getElementById('cfg-provincia').value.trim() : '',
+    telefono: document.getElementById('cfg-telefono') ? document.getElementById('cfg-telefono').value.trim() : '',
+    email: document.getElementById('cfg-email') ? document.getElementById('cfg-email').value.trim() : '',
+    web: document.getElementById('cfg-web') ? document.getElementById('cfg-web').value.trim() : '',
+    iban: document.getElementById('cfg-iban') ? document.getElementById('cfg-iban').value.trim() : '',
+    serie_defecto: (document.getElementById('cfg-serie_defecto') && document.getElementById('cfg-serie_defecto').value.trim()) || 'Factura Nº',
+    numero_inicio_factura: parseInt(document.getElementById('cfg-numero_inicio_factura')?.value, 10) || 1,
+    serie_sin_iva: (document.getElementById('cfg-serie_sin_iva') && document.getElementById('cfg-serie_sin_iva').value.trim()) || 'Factura Sin IVA Nº',
+    numero_inicio_factura_sin_iva: parseInt(document.getElementById('cfg-numero_inicio_factura_sin_iva')?.value, 10) || 1,
+    iva_defecto: parseFloat(document.getElementById('cfg-iva_defecto')?.value) || 21.0,
+    irpf_defecto: parseFloat(document.getElementById('cfg-irpf_defecto')?.value) || 0.0,
+    pdf_storage_dir: document.getElementById('cfg-pdf_storage_dir') ? document.getElementById('cfg-pdf_storage_dir').value.trim() : ''
+  };
+
+  const payloadPresupuesto = {
+    presupuesto_instagram: document.getElementById('cfg-pres-instagram') ? document.getElementById('cfg-pres-instagram').value.trim() : '',
+    presupuesto_email: document.getElementById('cfg-pres-email') ? document.getElementById('cfg-pres-email').value.trim() : '',
+    presupuesto_bienvenida_titulo: document.getElementById('cfg-pres-bienvenida-titulo') ? document.getElementById('cfg-pres-bienvenida-titulo').value.trim() : '',
+    presupuesto_bienvenida_subtitulo: document.getElementById('cfg-pres-bienvenida-subtitulo') ? document.getElementById('cfg-pres-bienvenida-subtitulo').value.trim() : '',
+    presupuesto_bienvenida_texto: document.getElementById('cfg-pres-bienvenida-texto') ? document.getElementById('cfg-pres-bienvenida-texto').value.trim() : '',
+    presupuesto_proceso_titulo: document.getElementById('cfg-pres-proceso-titulo') ? document.getElementById('cfg-pres-proceso-titulo').value.trim() : '',
+    presupuesto_proceso_subtitulo: document.getElementById('cfg-pres-proceso-subtitulo') ? document.getElementById('cfg-pres-proceso-subtitulo').value.trim() : '',
+    proceso_fase1_titulo: document.getElementById('cfg-proceso-fase1-titulo') ? document.getElementById('cfg-proceso-fase1-titulo').value.trim() : '',
+    proceso_fase1_puntos: document.getElementById('cfg-proceso-fase1-puntos') ? document.getElementById('cfg-proceso-fase1-puntos').value.trim() : '',
+    proceso_fase2_titulo: document.getElementById('cfg-proceso-fase2-titulo') ? document.getElementById('cfg-proceso-fase2-titulo').value.trim() : '',
+    proceso_fase2_puntos: document.getElementById('cfg-proceso-fase2-puntos') ? document.getElementById('cfg-proceso-fase2-puntos').value.trim() : '',
+    proceso_fase3_titulo: document.getElementById('cfg-proceso-fase3-titulo') ? document.getElementById('cfg-proceso-fase3-titulo').value.trim() : '',
+    proceso_fase3_puntos: document.getElementById('cfg-proceso-fase3-puntos') ? document.getElementById('cfg-proceso-fase3-puntos').value.trim() : '',
+    proceso_fase4_titulo: document.getElementById('cfg-proceso-fase4-titulo') ? document.getElementById('cfg-proceso-fase4-titulo').value.trim() : '',
+    proceso_fase4_puntos: document.getElementById('cfg-proceso-fase4-puntos') ? document.getElementById('cfg-proceso-fase4-puntos').value.trim() : '',
+    presupuesto_proceso_cierre: document.getElementById('cfg-pres-proceso-cierre') ? document.getElementById('cfg-pres-proceso-cierre').value.trim() : '',
+    factura_condiciones: document.getElementById('cfg-factura-condiciones') ? document.getElementById('cfg-factura-condiciones').value.trim() : '',
+    presupuesto_condiciones: document.getElementById('cfg-pres-condiciones') ? document.getElementById('cfg-pres-condiciones').value.trim() : ''
+  };
+
+  const btn = document.getElementById('btn-guardar-config');
+  if (btn) {
+    btn.disabled = true;
+    btn.textContent = 'Guardando…';
+  }
+
+  try {
+    const data = await apiFetch('/api/configuracion', {
+      method: 'PUT',
+      body: payload
+    });
+
+    await apiFetch('/api/configuracion/presupuesto', {
+      method: 'PUT',
+      body: payloadPresupuesto
+    });
+
+    actualizarBadgeEstado(data.es_valida);
+    if (window.Toast) {
+      Toast.success('Ajustes guardados', 'Los datos fiscales se han actualizado correctamente.');
+    } else {
+      alert('Ajustes guardados correctamente.');
+    }
+
+    if (typeof verificarConfiguracionGlobal === 'function') {
+      verificarConfiguracionGlobal();
+    }
+  } catch (err) {
+    const errMsg = err.message || (err.data && err.data.detail) || 'No se pudieron guardar los ajustes.';
+    if (window.Toast) {
+      Toast.error('Error al guardar', errMsg);
+    } else {
+      alert(`Error al guardar: ${errMsg}`);
+    }
+  } finally {
+    isSavingConfig = false;
+    if (btn) {
+      btn.disabled = false;
+      btn.textContent = 'Guardar Cambios';
+    }
+  }
+}
+
+async function crearAccesoDirectoEscritorio() {
+  const btn = document.getElementById('btn-crear-acceso-escritorio');
+  if (btn) { btn.disabled = true; btn.textContent = 'Creando…'; }
+  try {
+    const res = await apiFetch('/api/configuracion/crear-acceso-directo', { method: 'POST' });
+    if (res.ok) {
+      if (window.Toast) Toast.success('Acceso Directo', res.mensaje || 'Acceso directo creado con éxito.');
+    } else {
+      if (window.Toast) Toast.error('Aviso', res.mensaje || 'No se pudo crear el acceso directo.');
+    }
+  } catch (e) {
+    if (window.Toast) Toast.error('Error', e.message || 'Error al crear acceso directo');
+  } finally {
+    if (btn) { btn.disabled = false; btn.textContent = 'Crear Acceso en Escritorio'; }
+  }
+}
+
+async function mostrarSelectorRutasRapido() {
+  try {
+    const res = await fetch('/api/configuracion/rutas-sugeridas');
+    if (!res.ok) return;
+    const paths = await res.json();
+    let opciones = [`1. Local: ${paths.local_default}`];
+    if (paths.icloud) opciones.push(`2. iCloud Drive: ${paths.icloud}`);
+    opciones.push(`3. Escritorio: ${paths.desktop}`);
+
+    const choice = prompt(`Selecciona una ruta escribiendo el número:\n\n${opciones.join('\n')}\n\nO escribe una ruta personalizada:`, paths.local_default);
+    if (!choice) return;
+
+    let seleccion = choice.trim();
+    if (seleccion === '1') seleccion = paths.local_default;
+    else if (seleccion === '2' && paths.icloud) seleccion = paths.icloud;
+    else if (seleccion === '3') seleccion = paths.desktop;
+
+    const inputDir = document.getElementById('cfg-pdf_storage_dir');
+    if (inputDir) inputDir.value = seleccion;
+  } catch (e) {
+    console.error(e);
+  }
+}
+
+async function cargarBackupsUI() {
+  const tbody = document.getElementById('backups-tbody');
+  if (!tbody) return;
+  try {
+    const list = await apiFetch('/api/backups');
+    if (!list || list.length === 0) {
+      tbody.innerHTML = '<tr><td colspan="4" style="text-align: center; padding: 24px; color: var(--mac-text-tertiary);">No hay copias de seguridad registradas aún.</td></tr>';
+      return;
+    }
+    tbody.innerHTML = list.map(b => {
+      const sizeKb = b.size_kb !== undefined ? b.size_kb : (b.tamano_bytes ? (b.tamano_bytes / 1024).toFixed(1) : 0);
+      const fechaDisplay = b.fecha || b.created_at || '—';
+      return `
+        <tr>
+          <td style="font-family: var(--font-mono); font-weight: 500;">${escapeHtml(b.filename)}</td>
+          <td style="color: var(--mac-text-secondary); font-size: 12px;">${escapeHtml(fechaDisplay)}</td>
+          <td style="text-align: right; color: var(--mac-text-secondary); font-size: 12px; font-variant-numeric: tabular-nums;">${sizeKb} KB</td>
+          <td style="text-align: right;">
+            <button type="button" class="btn-native" style="height: 22px; font-size: 11px; padding: 0 8px;" onclick="restaurarBackupUI('${escapeHtml(b.filename)}')">
+              Restaurar
+            </button>
+          </td>
+        </tr>
+      `;
+    }).join('');
+  } catch (err) {
+    tbody.innerHTML = `<tr><td colspan="4" style="text-align: center; color: var(--mac-system-red); padding: 20px;">Error al cargar respaldos: ${escapeHtml(err.message)}</td></tr>`;
+  }
+}
+
+async function crearBackupManualUI() {
+  const btn = document.getElementById('btn-crear-backup');
+  if (btn) {
+    btn.disabled = true;
+    btn.textContent = 'Creando…';
+  }
+  try {
+    await apiFetch('/api/backups/snapshot', { method: 'POST' });
+    if (window.Toast) Toast.success('Copia creada', 'Se ha generado un nuevo respaldo de la base de datos.');
+    cargarBackupsUI();
+  } catch (err) {
+    if (window.Toast) Toast.error('Error', err.message);
+  } finally {
+    if (btn) {
+      btn.disabled = false;
+      btn.innerHTML = `
+        <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+          <line x1="12" y1="5" x2="12" y2="19"></line>
+          <line x1="5" y1="12" x2="19" y2="12"></line>
+        </svg>
+        Crear Respaldo Manual
+      `;
+    }
+  }
+}
+
+async function restaurarBackupUI(filename) {
+  const confirmado = await showMacConfirmDialog({
+    title: '¿Restaurar base de datos completa?',
+    detailHtml: `
+      <p style="margin: 0 0 8px 0; font-size: 13px; color: var(--mac-text-primary);">
+        ¿Deseas restaurar el sistema al archivo de respaldo <strong class="font-mono">${escapeHtml(filename)}</strong>?
+      </p>
+      <p style="margin: 0; font-size: 12px; color: var(--mac-text-secondary); line-height: 1.45;">
+        Se sobrescribirá el estado actual de la base de datos. Se creará una instantánea preventiva de seguridad antes de proceder.
+      </p>
+    `,
+    confirmText: 'Restaurar Base de Datos',
+    cancelText: 'Cancelar',
+    isDestructive: true
+  });
+
+  if (!confirmado) return;
+
+  try {
+    await apiFetch(`/api/backups/${filename}/restaurar`, { method: 'POST' });
+    if (window.Toast) Toast.success('Base de datos restaurada', `El sistema se ha revertido al respaldo ${filename}.`);
+    setTimeout(() => window.location.reload(), 1000);
+  } catch (err) {
+    if (window.Toast) Toast.error('Error al restaurar respaldo', err.message);
+  }
+}
+</script>
+{% endblock %}

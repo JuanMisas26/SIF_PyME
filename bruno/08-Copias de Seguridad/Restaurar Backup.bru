@@ -1,0 +1,11 @@
+meta {
+  name: Restaurar Backup
+  type: http
+  seq: 3
+}
+
+post {
+  url: {{baseUrl}}/api/backups/snapshot_manual.db/restaurar
+  body: none
+  auth: none
+}

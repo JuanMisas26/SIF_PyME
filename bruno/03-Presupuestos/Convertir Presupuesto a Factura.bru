@@ -1,0 +1,20 @@
+meta {
+  name: Convertir Presupuesto a Factura
+  type: http
+  seq: 7
+}
+
+post {
+  url: {{baseUrl}}/api/presupuestos/1/convertir-factura
+  body: json
+  auth: none
+}
+
+body:json {
+  {
+    "opcion_id": 1,
+    "tipo_facturacion": "total",
+    "porcentaje_iva": 21.0,
+    "porcentaje_irpf": 0.0
+  }
+}

@@ -1,0 +1,23 @@
+meta {
+  name: Crear Cliente
+  type: http
+  seq: 3
+}
+
+post {
+  url: {{baseUrl}}/api/clientes
+  body: json
+  auth: none
+}
+
+body:json {
+  {
+    "razon_social": "Silvia y Óscar",
+    "telefono": "611223344",
+    "email": "silviayoscar@boda.es",
+    "direccion": "Calle Mayor 12",
+    "codigo_postal": "33001",
+    "ciudad": "Oviedo",
+    "provincia": "Asturias"
+  }
+}

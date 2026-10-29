@@ -1,0 +1,18 @@
+meta {
+  name: Actualizar Cliente
+  type: http
+  seq: 4
+}
+
+put {
+  url: {{baseUrl}}/api/clientes/1
+  body: json
+  auth: none
+}
+
+body:json {
+  {
+    "telefono": "622334455",
+    "email": "novios@boda.es"
+  }
+}

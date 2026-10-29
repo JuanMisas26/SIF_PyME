@@ -1,0 +1,593 @@
+{% extends "base.html" %}
+{% block title %}Descuentos y Promociones — SIF PyME macOS{% endblock %}
+
+{% block content %}
+<main class="main-content" style="padding: 0; display: flex; flex-direction: column; flex: 1; min-height: 0;">
+  
+  <!-- Sub-barra de acciones nativa macOS -->
+  <div class="filter-bar">
+    <div class="filter-group">
+      <span class="filter-label" style="font-weight: 600; color: var(--mac-text-primary);">Descuentos y Promociones</span>
+      <span class="filter-label" style="color: var(--mac-text-tertiary);">•</span>
+      <span class="filter-label" style="color: var(--mac-text-secondary);">Descuentos aplicables a productos específicos</span>
+    </div>
+
+    <div class="filter-group" style="display: flex; align-items: center; gap: 8px;">
+      <!-- Segmented filter de estado -->
+      <div class="mac-segmented-control" id="filter-segmented-estado" role="group">
+        <button type="button" class="segment-btn active" data-val="todos" onclick="setFiltroEstado('todos')">Todos</button>
+        <button type="button" class="segment-btn" data-val="activos" onclick="setFiltroEstado('activos')">Activos</button>
+        <button type="button" class="segment-btn" data-val="inactivos" onclick="setFiltroEstado('inactivos')">Inactivos</button>
+      </div>
+
+      <div class="search-field">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="11" cy="11" r="8"></circle>
+          <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+        </svg>
+        <input type="text" class="search-input" id="filter-search-descuento" placeholder="Buscar descuento o código…" style="width: 200px;" aria-label="Buscar descuentos">
+      </div>
+
+      <button class="btn-native btn-primary" id="btn-nuevo-descuento" type="button" onclick="abrirModalDescuento()">
+        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
+          <line x1="12" y1="5" x2="12" y2="19"></line>
+          <line x1="5" y1="12" x2="19" y2="12"></line>
+        </svg>
+        Nuevo Descuento…
+      </button>
+    </div>
+  </div>
+
+  <!-- Tabla de Descuentos Estilo macOS (NSTableView) -->
+  <div class="table-container">
+    <table class="mac-table">
+      <thead>
+        <tr>
+          <th style="min-width: 180px;">Nombre y Código</th>
+          <th style="width: 130px; text-align: right;">Descuento</th>
+          <th style="min-width: 220px;">Ámbito de Aplicación</th>
+          <th style="min-width: 200px;">Descripción / Notas</th>
+          <th style="width: 90px; text-align: center;">Estado</th>
+          <th style="text-align: right; width: 140px;">Acciones</th>
+        </tr>
+      </thead>
+      <tbody id="descuentos-tbody">
+        <tr>
+          <td colspan="6" style="text-align: center; padding: 40px; color: var(--mac-text-tertiary);">
+            Cargando descuentos…
+          </td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+</main>
+
+<!-- Modal Nativo Estilo macOS Sheet (NSPanel) -->
+<div class="modal-overlay" id="descuento-modal">
+  <div class="modal" style="max-width: 580px; width: 94%; border-radius: 12px; box-shadow: 0 25px 70px rgba(0,0,0,0.28); border: 1px solid rgba(0,0,0,0.18); overflow: hidden;">
+    <div class="modal-header" style="height: 44px; padding: 0 16px; background: #F8F8F9; border-bottom: 1px solid var(--mac-separator); display: flex; align-items: center; justify-content: space-between;">
+      <h3 class="modal-title" id="modal-descuento-title" style="font-size: 13px; font-weight: 600; margin: 0;">Nuevo Descuento</h3>
+      <button class="btn-icon" id="btn-close-descuento-modal" type="button" onclick="cerrarModalDescuento()" title="Cerrar">✕</button>
+    </div>
+
+    <div class="modal-body" style="padding: 18px 20px; max-height: 75vh; overflow-y: auto;">
+      <form id="form-descuento" novalidate onsubmit="submitDescuento(event)">
+        <input type="hidden" id="descuento-id" name="id" value="">
+        <div id="descuento-modal-alert" class="hidden mb-3" style="background: #FFF2F2; color: var(--mac-system-red); padding: 8px 12px; border-radius: 6px; font-size: 12px; border: 1px solid rgba(255,59,48,0.2);"></div>
+
+        <div class="form-row">
+          <div class="form-group" style="flex: 2;">
+            <label style="font-size: 11px; font-weight: 500; color: var(--mac-text-secondary); text-transform: uppercase;">Nombre del Descuento *</label>
+            <input type="text" class="form-control" id="descuento-nombre" name="nombre" required placeholder="ej. Descuento Primavera 2026">
+          </div>
+          <div class="form-group" style="flex: 1;">
+            <label style="font-size: 11px; font-weight: 500; color: var(--mac-text-secondary); text-transform: uppercase;">Código / Alias</label>
+            <input type="text" class="form-control font-mono" id="descuento-codigo" name="codigo" placeholder="PRIMAVERA15" style="text-transform: uppercase;">
+          </div>
+        </div>
+
+        <div class="form-row mt-2" style="background: var(--mac-sidebar-bg); border: 1px solid var(--mac-separator-subtle); border-radius: 6px; padding: 10px 12px; align-items: center;">
+          <div style="flex: 1;">
+            <label style="font-size: 11px; font-weight: 600; color: var(--mac-text-secondary); text-transform: uppercase; margin-bottom: 4px; display: block;">Tipo de Descuento</label>
+            <div class="mac-segmented-control" id="modal-segmented-tipo" role="group">
+              <button type="button" class="segment-btn active" id="btn-tipo-porcentaje" onclick="setModalTipoDescuento('porcentaje')">Porcentaje (%)</button>
+              <button type="button" class="segment-btn" id="btn-tipo-fijo" onclick="setModalTipoDescuento('fijo')">Importe Fijo (€)</button>
+            </div>
+            <input type="hidden" id="descuento-tipo" name="tipo" value="porcentaje">
+          </div>
+
+          <div style="flex: 1;">
+            <label style="font-size: 11px; font-weight: 600; color: var(--mac-text-secondary); text-transform: uppercase; margin-bottom: 4px; display: block;" id="label-valor-descuento">Valor del Descuento (%) *</label>
+            <div style="position: relative;">
+              <input type="number" class="form-control" id="descuento-valor" name="valor" step="0.5" min="0" required placeholder="15.0" style="padding-right: 24px; font-weight: 600;">
+              <span id="addon-valor-simbolo" style="position: absolute; right: 10px; top: 50%; transform: translateY(-50%); font-size: 12px; color: var(--mac-text-secondary); pointer-events: none;">%</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- ÁMBITO DE APLICACIÓN: GLOBAL VS PRODUCTOS ESPECÍFICOS -->
+        <div class="form-group mt-3">
+          <label style="font-size: 11px; font-weight: 600; color: var(--mac-text-secondary); text-transform: uppercase; margin-bottom: 4px; display: block;">
+            Ámbito de Aplicación
+          </label>
+          <div class="mac-segmented-control" id="modal-segmented-aplica-a" role="group" style="width: 100%;">
+            <button type="button" class="segment-btn active" id="btn-aplica-todos" onclick="setModalAplicaA('todos')" style="flex: 1; text-align: center;">
+              🌐 Todos los productos (Global)
+            </button>
+            <button type="button" class="segment-btn" id="btn-aplica-productos" onclick="setModalAplicaA('productos')" style="flex: 1; text-align: center;">
+              🎯 Productos Específicos
+            </button>
+          </div>
+          <input type="hidden" id="descuento-aplica-a" name="aplica_a" value="todos">
+        </div>
+
+        <!-- LISTA SELECTORA DE PRODUCTOS VINCULADOS (VISIBLE SOLO SI APLICA_A === 'PRODUCTOS') -->
+        <div id="container-productos-vinculados" style="display: none; margin-top: 10px; background: var(--mac-sidebar-bg); border: 1px solid var(--mac-separator-subtle); border-radius: 6px; padding: 10px 12px;">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+            <span style="font-size: 11px; font-weight: 600; color: var(--mac-text-secondary); text-transform: uppercase;">
+              Seleccionar Productos Incluidos:
+            </span>
+            <span id="count-productos-seleccionados" style="font-size: 11px; color: var(--mac-accent); font-weight: 600;">
+              0 seleccionados
+            </span>
+          </div>
+
+          <div style="margin-bottom: 8px;">
+            <input type="text" class="form-control" id="search-modal-productos" placeholder="Filtrar catálogo…" oninput="filtrarProductosModal(this.value)" style="font-size: 11px; height: 26px;">
+          </div>
+
+          <div id="lista-checkboxes-productos" style="max-height: 160px; overflow-y: auto; display: flex; flex-direction: column; gap: 4px; border: 1px solid var(--mac-separator-subtle); border-radius: 4px; background: #FFFFFF; padding: 6px 8px;">
+            <!-- Checkboxes generados dinámicamente -->
+            <div style="font-size: 11px; color: var(--mac-text-tertiary); text-align: center; padding: 8px;">Cargando productos…</div>
+          </div>
+          <div style="font-size: 11px; color: var(--mac-text-tertiary); margin-top: 6px;">
+            ℹ️ Si este descuento se aplica en factura/presupuesto en modo <strong>no visible</strong>, se autocalculará el precio unitario únicamente de los productos seleccionados.
+          </div>
+        </div>
+
+        <div class="form-group mt-3">
+          <label style="font-size: 11px; font-weight: 500; color: var(--mac-text-secondary); text-transform: uppercase;">Descripción / Condiciones</label>
+          <textarea class="form-control" id="descuento-descripcion" name="descripcion" rows="2" placeholder="Condiciones comerciales, vigencia o notas internas…"></textarea>
+        </div>
+
+        <div class="form-check mt-3" style="display: flex; align-items: center; gap: 8px;">
+          <input type="checkbox" id="descuento-activo" name="activo" checked style="cursor: pointer; width: 15px; height: 15px;">
+          <label for="descuento-activo" style="font-size: 12px; font-weight: 500; cursor: pointer; color: var(--mac-text-primary); margin: 0;">
+            Promoción Activa (disponible para seleccionar en facturas y presupuestos)
+          </label>
+        </div>
+
+        <div class="modal-footer" style="padding-top: 16px; margin-top: 16px; border-top: 1px solid var(--mac-separator-subtle); display: flex; justify-content: flex-end; gap: 8px;">
+          <button type="button" class="btn-native" onclick="cerrarModalDescuento()">Cancelar</button>
+          <button type="submit" class="btn-native btn-primary" id="btn-submit-descuento">Guardar Promoción</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block statusbar %}
+<footer class="mac-statusbar">
+  <div class="statusbar-item">
+    <span id="status-descuentos-count">Cargando promociones...</span>
+  </div>
+  <div class="statusbar-item" id="descuentos-pagination-container">
+  </div>
+</footer>
+{% endblock %}
+
+{% block scripts %}
+<script>
+  let descuentosCache = [];
+  let catalogoProductos = [];
+  let _filtroEstadoActual = 'todos';
+  let _descuentosPagination = null;
+  let _descuentosCurrentPage = 1;
+  let _descuentosPageSize = 25;
+
+  document.addEventListener('DOMContentLoaded', async () => {
+    await Promise.all([cargarDescuentos(), precargarCatalogoProductos()]);
+
+    const searchInput = document.getElementById('filter-search-descuento');
+    if (searchInput) {
+      let timeout;
+      searchInput.addEventListener('input', (e) => {
+        clearTimeout(timeout);
+        timeout = setTimeout(() => {
+          _descuentosCurrentPage = 1;
+          cargarDescuentos();
+        }, 300);
+      });
+    }
+  });
+
+  async function precargarCatalogoProductos() {
+    try {
+      const prods = await apiFetch('/api/productos?page_size=300');
+      catalogoProductos = Array.isArray(prods) ? prods : (prods.items || []);
+    } catch (err) {
+      console.error('Error al cargar catálogo de productos:', err);
+    }
+  }
+
+  function setFiltroEstado(val) {
+    _filtroEstadoActual = val;
+    document.querySelectorAll('#filter-segmented-estado .segment-btn').forEach(btn => {
+      btn.classList.toggle('active', btn.dataset.val === val);
+    });
+    _descuentosCurrentPage = 1;
+    cargarDescuentos();
+  }
+
+  async function cargarDescuentos() {
+    const tbody = document.getElementById('descuentos-tbody');
+    const statusCount = document.getElementById('status-descuentos-count');
+    const q = document.getElementById('filter-search-descuento')?.value || '';
+
+    let url = `/api/descuentos?paginated=true&page=${_descuentosCurrentPage}&page_size=${_descuentosPageSize}`;
+    if (q) url += `&q=${encodeURIComponent(q)}`;
+    if (_filtroEstadoActual === 'activos') url += `&activo=true`;
+    else if (_filtroEstadoActual === 'inactivos') url += `&activo=false`;
+
+    try {
+      const data = await apiFetch(url);
+      descuentosCache = data.items || [];
+      const total = data.total || 0;
+
+      if (statusCount) {
+        statusCount.textContent = `${total} promoción${total === 1 ? '' : 'es'} registrada${total === 1 ? '' : 's'}`;
+      }
+
+      if (!_descuentosPagination && window.MacPagination) {
+        _descuentosPagination = new MacPagination({
+          container: 'descuentos-pagination-container',
+          initialPageSize: _descuentosPageSize,
+          onPageChange: (newPage) => {
+            _descuentosCurrentPage = newPage;
+            cargarDescuentos();
+          },
+          onPageSizeChange: (newSize) => {
+            _descuentosPageSize = newSize;
+            _descuentosCurrentPage = 1;
+            cargarDescuentos();
+          }
+        });
+      }
+
+      if (_descuentosPagination) {
+        _descuentosPagination.render({
+          page: data.page || _descuentosCurrentPage,
+          pageSize: data.page_size || _descuentosPageSize,
+          total: total,
+          totalPages: data.total_pages || Math.max(1, Math.ceil(total / _descuentosPageSize))
+        });
+      }
+
+      if (!descuentosCache || descuentosCache.length === 0) {
+        tbody.innerHTML = `
+          <tr>
+            <td colspan="6" style="text-align: center; padding: 40px; color: var(--mac-text-tertiary);">
+              No se han encontrado promociones. Haga clic en «Nueva Promoción…» para incorporar una.
+            </td>
+          </tr>
+        `;
+        return;
+      }
+
+      tbody.innerHTML = descuentosCache.map(d => {
+        const esPorcentaje = d.tipo === 'porcentaje';
+        const valorFormateado = esPorcentaje ? `${d.valor}%` : `${formatCurrency(d.valor)}`;
+        const badgeValorColor = esPorcentaje ? 'background: #EFF6FF; color: #1D4ED8; border: 1px solid #BFDBFE;' : 'background: #ECFDF5; color: #047857; border: 1px solid #A7F3D0;';
+        
+        let ambitoHtml = '';
+        if (d.aplica_a === 'todos') {
+          ambitoHtml = '<span class="badge" style="background: #F3F4F6; color: #374151; border: 1px solid #E5E7EB;">🌐 Todos los productos</span>';
+        } else {
+          const prodsList = d.productos_nombres || [];
+          if (prodsList.length === 0) {
+            ambitoHtml = '<span class="badge" style="background: #FFFBEB; color: #B45309; border: 1px solid #FDE68A;">⚠️ Específico (Sin productos vinculados)</span>';
+          } else if (prodsList.length === 1) {
+            ambitoHtml = `<span class="badge" style="background: #F3E8FF; color: #6B21A8; border: 1px solid #E9D5FF;" title="${escapeHtml(prodsList[0])}">🎯 ${escapeHtml(prodsList[0])}</span>`;
+          } else {
+            ambitoHtml = `<span class="badge" style="background: #F3E8FF; color: #6B21A8; border: 1px solid #E9D5FF;" title="${escapeHtml(prodsList.join(', '))}">🎯 ${prodsList.length} productos vinculados</span>`;
+          }
+        }
+
+        const badgeEstado = d.activo
+          ? '<span class="badge" style="background: #ECFDF5; color: #065F46; border: 1px solid #A7F3D0;">Activo</span>'
+          : '<span class="badge" style="background: #F3F4F6; color: #6B7280; border: 1px solid #E5E7EB;">Inactivo</span>';
+
+        return `
+          <tr>
+            <td>
+              <div style="font-weight: 600; color: var(--mac-text-primary); font-size: 13px;">
+                ${escapeHtml(d.nombre)}
+              </div>
+              ${d.codigo ? `
+                <div style="margin-top: 2px;">
+                  <span class="font-mono" style="font-size: 10px; background: var(--mac-sidebar-bg); padding: 1px 5px; border-radius: 3px; border: 1px solid var(--mac-separator-subtle); color: var(--mac-text-secondary);">
+                    ${escapeHtml(d.codigo)}
+                  </span>
+                </div>
+              ` : ''}
+            </td>
+            <td style="text-align: right; white-space: nowrap;">
+              <span class="badge" style="${badgeValorColor} font-size: 12px; font-weight: 700;">
+                ${valorFormateado}
+              </span>
+            </td>
+            <td>${ambitoHtml}</td>
+            <td style="color: var(--mac-text-secondary); font-size: 12px;">
+              ${d.descripcion ? escapeHtml(d.descripcion) : '<span style="color: var(--mac-text-tertiary);">—</span>'}
+            </td>
+            <td style="text-align: center;">${badgeEstado}</td>
+            <td style="text-align: right; white-space: nowrap;">
+              <div style="display: inline-flex; gap: 4px; align-items: center; justify-content: flex-end;">
+                <button type="button" class="btn-native" style="height: 22px; font-size: 11px; padding: 0 6px;" onclick="abrirModalDescuento(${d.id})" title="Editar promoción">
+                  Editar
+                </button>
+                <button type="button" class="btn-native" style="height: 22px; font-size: 11px; padding: 0 6px;" onclick="toggleActivoDescuento(${d.id}, ${d.activo})" title="${d.activo ? 'Desactivar' : 'Activar'}">
+                  ${d.activo ? 'Pausar' : 'Activar'}
+                </button>
+                <button type="button" class="btn-native item-danger" style="height: 22px; font-size: 11px; padding: 0 6px; color: var(--mac-system-red);" onclick="confirmarEliminarDescuento(${d.id}, '${escapeHtml(d.nombre)}')" title="Eliminar">
+                  ✕
+                </button>
+              </div>
+            </td>
+          </tr>
+        `;
+      }).join('');
+
+    } catch (err) {
+      console.error(err);
+      tbody.innerHTML = `<tr><td colspan="6" style="text-align: center; color: var(--mac-system-red); padding: 24px;">${err.message}</td></tr>`;
+    }
+  }
+
+  function setModalTipoDescuento(tipo) {
+    document.getElementById('descuento-tipo').value = tipo;
+    const btnPorc = document.getElementById('btn-tipo-porcentaje');
+    const btnFijo = document.getElementById('btn-tipo-fijo');
+    const lblVal = document.getElementById('label-valor-descuento');
+    const addon = document.getElementById('addon-valor-simbolo');
+
+    if (btnPorc) btnPorc.classList.toggle('active', tipo === 'porcentaje');
+    if (btnFijo) btnFijo.classList.toggle('active', tipo === 'fijo');
+
+    if (tipo === 'porcentaje') {
+      if (lblVal) lblVal.textContent = 'Valor del Descuento (%) *';
+      if (addon) addon.textContent = '%';
+    } else {
+      if (lblVal) lblVal.textContent = 'Importe del Descuento (€) *';
+      if (addon) addon.textContent = '€';
+    }
+  }
+
+  function setModalAplicaA(aplicaA) {
+    document.getElementById('descuento-aplica-a').value = aplicaA;
+    const btnTodos = document.getElementById('btn-aplica-todos');
+    const btnProds = document.getElementById('btn-aplica-productos');
+    const containerProds = document.getElementById('container-productos-vinculados');
+
+    if (btnTodos) btnTodos.classList.toggle('active', aplicaA === 'todos');
+    if (btnProds) btnProds.classList.toggle('active', aplicaA === 'productos');
+
+    if (containerProds) {
+      containerProds.style.display = (aplicaA === 'productos') ? 'block' : 'none';
+    }
+  }
+
+  function renderCheckboxesProductos(seleccionados = []) {
+    const listContainer = document.getElementById('lista-checkboxes-productos');
+    if (!listContainer) return;
+
+    if (!catalogoProductos || catalogoProductos.length === 0) {
+      listContainer.innerHTML = '<div style="font-size: 11px; color: var(--mac-text-tertiary); text-align: center; padding: 8px;">No hay productos registrados en el catálogo.</div>';
+      actualizarContadorSeleccionados();
+      return;
+    }
+
+    const selSet = new Set(seleccionados);
+    listContainer.innerHTML = catalogoProductos.map(p => {
+      const nombreProd = p.nombre || p.descripcion || `Producto #${p.id}`;
+      const checked = selSet.has(p.id) ? 'checked' : '';
+      return `
+        <label class="prod-chk-item" data-nombre="${escapeHtml(nombreProd.toLowerCase())}" style="display: flex; align-items: center; gap: 8px; font-size: 12px; cursor: pointer; padding: 3px 4px; border-radius: 4px;">
+          <input type="checkbox" name="producto_ids" value="${p.id}" ${checked} onchange="actualizarContadorSeleccionados()" style="cursor: pointer;">
+          <span style="font-weight: 500; color: var(--mac-text-primary); flex: 1;">${escapeHtml(nombreProd)}</span>
+          <span style="color: var(--mac-text-secondary); font-size: 11px;">${formatCurrency(p.precio_unitario_base || 0)}</span>
+        </label>
+      `;
+    }).join('');
+
+    actualizarContadorSeleccionados();
+  }
+
+  function filtrarProductosModal(term) {
+    const t = (term || '').trim().toLowerCase();
+    document.querySelectorAll('.prod-chk-item').forEach(el => {
+      const nombre = el.dataset.nombre || '';
+      el.style.display = (!t || nombre.includes(t)) ? 'flex' : 'none';
+    });
+  }
+
+  function actualizarContadorSeleccionados() {
+    const countEl = document.getElementById('count-productos-seleccionados');
+    if (!countEl) return;
+    const checked = document.querySelectorAll('#lista-checkboxes-productos input[name="producto_ids"]:checked');
+    countEl.textContent = `${checked.length} seleccionado${checked.length === 1 ? '' : 's'}`;
+  }
+
+  async function abrirModalDescuento(id = null) {
+    const modal = document.getElementById('descuento-modal');
+    const title = document.getElementById('modal-descuento-title');
+    const alertBox = document.getElementById('descuento-modal-alert');
+    const form = document.getElementById('form-descuento');
+    
+    if (alertBox) alertBox.classList.add('hidden');
+    form.reset();
+
+    if (catalogoProductos.length === 0) {
+      await precargarCatalogoProductos();
+    }
+
+    if (id) {
+      if (title) title.textContent = 'Editar Promoción';
+      try {
+        const desc = await apiFetch(`/api/descuentos/${id}`);
+        document.getElementById('descuento-id').value = desc.id;
+        document.getElementById('descuento-nombre').value = desc.nombre || '';
+        document.getElementById('descuento-codigo').value = desc.codigo || '';
+        document.getElementById('descuento-valor').value = desc.valor;
+        document.getElementById('descuento-descripcion').value = desc.descripcion || '';
+        document.getElementById('descuento-activo').checked = Boolean(desc.activo);
+
+        setModalTipoDescuento(desc.tipo || 'porcentaje');
+        setModalAplicaA(desc.aplica_a || 'todos');
+        renderCheckboxesProductos(desc.producto_ids || []);
+      } catch (err) {
+        if (window.Toast) Toast.error('Error', err.message);
+        return;
+      }
+    } else {
+      if (title) title.textContent = 'Nueva Promoción';
+      document.getElementById('descuento-id').value = '';
+      setModalTipoDescuento('porcentaje');
+      setModalAplicaA('todos');
+      renderCheckboxesProductos([]);
+    }
+
+    modal.classList.add('show');
+    document.getElementById('descuento-nombre')?.focus();
+  }
+
+  function cerrarModalDescuento() {
+    document.getElementById('descuento-modal').classList.remove('show');
+  }
+
+  async function submitDescuento(event) {
+    event.preventDefault();
+    const alertBox = document.getElementById('descuento-modal-alert');
+    const btnSubmit = document.getElementById('btn-submit-descuento');
+    if (alertBox) alertBox.classList.add('hidden');
+
+    const id = document.getElementById('descuento-id').value;
+    const nombre = document.getElementById('descuento-nombre').value.trim();
+    const codigo = document.getElementById('descuento-codigo').value.trim();
+    const tipo = document.getElementById('descuento-tipo').value;
+    const valor = parseFloat(document.getElementById('descuento-valor').value);
+    const aplica_a = document.getElementById('descuento-aplica-a').value;
+    const descripcion = document.getElementById('descuento-descripcion').value.trim();
+    const activo = document.getElementById('descuento-activo').checked;
+
+    if (!nombre) {
+      alertBox.textContent = 'El nombre de la promoción es obligatorio.';
+      alertBox.classList.remove('hidden');
+      return;
+    }
+    if (isNaN(valor) || valor < 0) {
+      alertBox.textContent = 'El valor del descuento debe ser un número igual o mayor a 0.';
+      alertBox.classList.remove('hidden');
+      return;
+    }
+
+    let producto_ids = [];
+    if (aplica_a === 'productos') {
+      const checkedBoxes = document.querySelectorAll('#lista-checkboxes-productos input[name="producto_ids"]:checked');
+      producto_ids = Array.from(checkedBoxes).map(cb => parseInt(cb.value, 10));
+      if (producto_ids.length === 0) {
+        alertBox.textContent = 'Debe seleccionar al menos un producto específico para esta promoción.';
+        alertBox.classList.remove('hidden');
+        return;
+      }
+    }
+
+    const payload = {
+      nombre,
+      codigo: codigo || null,
+      tipo,
+      valor,
+      aplica_a,
+      descripcion: descripcion || null,
+      activo,
+      producto_ids
+    };
+
+    btnSubmit.disabled = true;
+    btnSubmit.textContent = 'Guardando…';
+
+    try {
+      if (id) {
+        await apiFetch(`/api/descuentos/${id}`, {
+          method: 'PUT',
+          body: payload
+        });
+        if (window.Toast) Toast.success('Promoción Actualizada', `Se ha guardado «${nombre}».`);
+      } else {
+        await apiFetch('/api/descuentos', {
+          method: 'POST',
+          body: payload
+        });
+        if (window.Toast) Toast.success('Promoción Creada', `Se ha incorporado «${nombre}».`);
+      }
+
+      cerrarModalDescuento();
+      await cargarDescuentos();
+      if (typeof window.actualizarContadoresSidebar === 'function') {
+        window.actualizarContadoresSidebar();
+      }
+    } catch (err) {
+      alertBox.textContent = err.message || 'Error al guardar la promoción.';
+      alertBox.classList.remove('hidden');
+    } finally {
+      btnSubmit.disabled = false;
+      btnSubmit.textContent = 'Guardar Promoción';
+    }
+  }
+
+  async function toggleActivoDescuento(id, estadoActual) {
+    try {
+      await apiFetch(`/api/descuentos/${id}`, {
+        method: 'PUT',
+        body: { activo: !estadoActual }
+      });
+      if (window.Toast) Toast.success('Estado actualizado', `La promoción ha sido ${!estadoActual ? 'activada' : 'pausada'}.`);
+      await cargarDescuentos();
+      if (typeof window.actualizarContadoresSidebar === 'function') {
+        window.actualizarContadoresSidebar();
+      }
+    } catch (err) {
+      if (window.Toast) Toast.error('Error', err.message);
+    }
+  }
+
+  async function confirmarEliminarDescuento(id, nombre) {
+    const fnConfirm = window.showMacConfirmDialog || window.showMacConfirm;
+    let ok = false;
+    if (typeof fnConfirm === 'function') {
+      ok = await fnConfirm({
+        title: `¿Eliminar promoción «${nombre}»?`,
+        message: 'La promoción ya no estará disponible para facturas ni presupuestos.',
+        confirmText: 'Eliminar Promoción',
+        isDestructive: true
+      });
+    } else {
+      ok = confirm(`¿Deseas eliminar la promoción «${nombre}»?`);
+    }
+    if (!ok) return;
+
+    try {
+      await apiFetch(`/api/descuentos/${id}`, { method: 'DELETE' });
+      if (window.Toast) Toast.success('Promoción Eliminada', `«${nombre}» ha sido eliminada.`);
+      await cargarDescuentos();
+      if (typeof window.actualizarContadoresSidebar === 'function') {
+        window.actualizarContadoresSidebar();
+      }
+    } catch (err) {
+      if (window.Toast) Toast.error('Error al eliminar', err.message);
+    }
+  }
+</script>
+{% endblock %}
+

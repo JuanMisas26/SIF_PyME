@@ -1,0 +1,232 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{% block title %}SIF PyME — macOS Native{% endblock %}</title>
+  <link rel="stylesheet" href="/static/css/styles.css">
+  <link rel="stylesheet" href="/static/css/macos.css?v=20261026_02">
+  <link rel="icon" type="image/x-icon" href="/static/icon.ico">
+  <link rel="shortcut icon" type="image/x-icon" href="/static/icon.ico">
+</head>
+<body class="mac-app-body">
+
+  <div class="mac-window-wrapper">
+    <!-- Barra Superior / Toolbar Unificada de macOS (NSToolbar) -->
+    <header class="mac-toolbar">
+      <!-- Título de Documento Centrado -->
+      <div class="toolbar-title-container">
+        <div class="window-title">SIF PyME Facturación</div>
+        <div class="window-subtitle" id="window-subtitle-fiscal">SIF PyME</div>
+      </div>
+
+      <!-- Acciones de Toolbar -->
+      <div class="toolbar-actions">
+        <a href="/nuevo-presupuesto" class="btn-native" id="btn-toolbar-nuevo-presupuesto" title="Crear nuevo presupuesto">
+          <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
+            <line x1="12" y1="5" x2="12" y2="19"></line>
+            <line x1="5" y1="12" x2="19" y2="12"></line>
+          </svg>
+          Nuevo Presupuesto
+        </a>
+        <a href="/nueva-factura" class="btn-native btn-primary" id="btn-toolbar-nueva-factura" title="Crear nueva factura">
+          <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
+            <line x1="12" y1="5" x2="12" y2="19"></line>
+            <line x1="5" y1="12" x2="19" y2="12"></line>
+          </svg>
+          Nueva Factura
+        </a>
+      </div>
+    </header>
+
+    <!-- Alertas y Notificaciones -->
+    <div id="global-config-alert" class="hidden"></div>
+    <div id="toast-container"></div>
+
+    <div class="loading-overlay" id="loading-overlay">
+      <div class="spinner dark" style="width:40px;height:40px;border-width:3px"></div>
+      <div class="loading-text">Procesando...</div>
+    </div>
+
+    <!-- Modal Nativo de Confirmación y Alertas macOS (NSAlert Sheet) -->
+    <div class="modal-overlay" id="mac-confirm-modal" style="z-index: 10000;">
+      <div class="modal" style="max-width: 480px; border-radius: 12px; box-shadow: 0 25px 65px rgba(0,0,0,0.28); border: 1px solid rgba(0,0,0,0.18); overflow: hidden; background: #FFFFFF; padding: 0;">
+        <div style="padding: 24px 24px 20px 24px; display: flex; gap: 16px; align-items: flex-start;">
+          <div id="mac-confirm-icon-container" style="flex-shrink: 0; width: 44px; height: 44px; border-radius: 50%; display: flex; align-items: center; justify-content: center; background: #FEE2E2; color: var(--mac-system-red);">
+            <svg id="mac-confirm-icon-svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path>
+              <line x1="12" y1="9" x2="12" y2="13"></line>
+              <line x1="12" y1="17" x2="12.01" y2="17"></line>
+            </svg>
+          </div>
+          <div style="flex: 1; min-width: 0;">
+            <h3 id="mac-confirm-title" style="margin: 0 0 8px 0; font-size: 15px; font-weight: 700; color: var(--mac-text-primary); letter-spacing: -0.01em;">
+              Confirmar acción
+            </h3>
+            <div id="mac-confirm-body" style="font-size: 13px; color: var(--mac-text-secondary); line-height: 1.5;">
+              <!-- Contenido dinámico -->
+            </div>
+          </div>
+        </div>
+        <div class="modal-footer" style="background: #F8F8F9; border-top: 1px solid var(--mac-separator-subtle); padding: 12px 20px; display: flex; justify-content: flex-end; gap: 8px;">
+          <button type="button" class="btn-native" id="mac-confirm-btn-cancel" style="height: 28px; padding: 0 14px; font-size: 13px;">
+            Cancelar
+          </button>
+          <button type="button" class="btn-native btn-danger" id="mac-confirm-btn-ok" style="height: 28px; padding: 0 16px; font-size: 13px; font-weight: 600;">
+            Eliminar
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Modal Historial de Versiones macOS Sheet (NSPanel) -->
+    <div class="modal-overlay" id="modal-historial-versiones" style="z-index: 9999;">
+      <div class="modal" style="max-width: 800px; width: 92%; border-radius: 12px; box-shadow: 0 25px 70px rgba(0,0,0,0.28); border: 1px solid rgba(0,0,0,0.18); overflow: hidden; background: #FFFFFF; padding: 0;">
+        <div class="modal-header" style="height: 44px; padding: 0 16px; background: #F8F8F9; border-bottom: 1px solid var(--mac-separator); display: flex; justify-content: space-between; align-items: center;">
+          <div style="display: flex; align-items: center; gap: 8px;">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <circle cx="12" cy="12" r="10"></circle>
+              <polyline points="12 6 12 12 16 14"></polyline>
+            </svg>
+            <h3 id="versiones-modal-title" style="margin: 0; font-size: 13px; font-weight: 600; color: var(--mac-text-primary);">
+              Historial de Versiones
+            </h3>
+          </div>
+          <button type="button" class="btn-icon" onclick="VersionHistoryManager.cerrar()" title="Cerrar">✕</button>
+        </div>
+
+        <div style="display: grid; grid-template-columns: 280px 1fr; height: 500px; max-height: calc(85vh - 110px); overflow: hidden;">
+          <div id="versiones-lista-col" style="background: #F9FAFB; border-right: 1px solid var(--mac-separator-subtle); overflow-y: auto; padding: 10px; height: 100%; box-sizing: border-box; overscroll-behavior: contain;">
+            <!-- Lista cronológica -->
+          </div>
+          <div id="versiones-detalle-col" style="padding: 16px 20px; overflow-y: auto; height: 100%; box-sizing: border-box; overscroll-behavior: contain;">
+            <!-- Detalle de la versión seleccionada -->
+          </div>
+        </div>
+
+        <div class="modal-footer" style="background: #F8F8F9; border-top: 1px solid var(--mac-separator-subtle); padding: 12px 18px; display: flex; justify-content: space-between; align-items: center;">
+          <div style="font-size: 11px; color: var(--mac-text-tertiary);" id="versiones-modal-footnote">
+            Al restaurar una versión previa se crea una nueva versión activa preservando el historial.
+          </div>
+          <div style="display: flex; gap: 8px;">
+            <button type="button" class="btn-native" onclick="VersionHistoryManager.cerrar()">Cerrar</button>
+            <button type="button" class="btn-native btn-primary" id="btn-restaurar-version-seleccionada" style="display: none;" onclick="VersionHistoryManager.ejecutarRestauracion()">
+              Restaurar esta versión
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Cuerpo de Ventana con SplitView (Sidebar + Contenido) -->
+    <div class="window-body">
+      <!-- Panel Lateral (Source List) -->
+      {% set sc = get_sidebar_counts() if get_sidebar_counts is defined else {'facturas': 0, 'presupuestos': 0, 'clientes': 0, 'productos': 0, 'descuentos': 0, 'papelera': 0} %}
+      <nav class="sidebar" aria-label="Navegación del sistema">
+        <div class="sidebar-group">
+          <div class="sidebar-header">Gestión</div>
+          <a href="/" class="sidebar-item" id="nav-item-facturas">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+              <polyline points="14 2 14 8 20 8"></polyline>
+              <line x1="16" y1="13" x2="8" y2="13"></line>
+              <line x1="16" y1="17" x2="8" y2="17"></line>
+            </svg>
+            Facturas
+            <span class="sidebar-badge" id="sidebar-badge-facturas">{{ sc.facturas }}</span>
+          </a>
+          <a href="/presupuestos" class="sidebar-item" id="nav-item-presupuestos">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M9 11l3 3L22 4"></path>
+              <path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"></path>
+            </svg>
+            Presupuestos
+            <span class="sidebar-badge" id="sidebar-badge-presupuestos">{{ sc.presupuestos }}</span>
+          </a>
+        </div>
+
+        <div class="sidebar-group">
+          <div class="sidebar-header">Directorio</div>
+          <a href="/clientes" class="sidebar-item" id="nav-item-clientes">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
+              <circle cx="9" cy="7" r="4"></circle>
+              <path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
+              <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
+            </svg>
+            Clientes
+            <span class="sidebar-badge" id="sidebar-badge-clientes">{{ sc.clientes }}</span>
+          </a>
+          <a href="/productos" class="sidebar-item" id="nav-item-productos">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <rect x="2" y="7" width="20" height="14" rx="2" ry="2"></rect>
+              <path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"></path>
+            </svg>
+            Productos y Servicios
+            <span class="sidebar-badge" id="sidebar-badge-productos">{{ sc.productos }}</span>
+          </a>
+          <a href="/descuentos" class="sidebar-item" id="nav-item-descuentos">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <line x1="19" y1="5" x2="5" y2="19"></line>
+              <circle cx="6.5" cy="6.5" r="2.5"></circle>
+              <circle cx="17.5" cy="17.5" r="2.5"></circle>
+            </svg>
+            Descuentos
+            <span class="sidebar-badge" id="sidebar-badge-descuentos">{{ sc.descuentos if sc.descuentos is defined else 0 }}</span>
+          </a>
+          <a href="/configuracion" class="sidebar-item" id="nav-item-config">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <circle cx="12" cy="12" r="3"></circle>
+              <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
+            </svg>
+            Ajustes de Empresa
+          </a>
+        </div>
+
+        <div class="sidebar-group" style="margin-top: auto; padding-top: 10px; border-top: 1px solid var(--mac-separator-subtle);">
+          <a href="/papelera" class="sidebar-item" id="nav-item-papelera" title="Documentos eliminados y recuperación">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <polyline points="3 6 5 6 21 6"></polyline>
+              <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+            </svg>
+            Papelera
+            <span class="sidebar-badge" id="sidebar-badge-papelera">{{ sc.papelera if sc.papelera is defined else 0 }}</span>
+          </a>
+        </div>
+      </nav>
+
+      <!-- Slot Principal de Contenido -->
+      <div style="flex: 1; display: flex; min-width: 0; min-height: 0; overflow: hidden; position: relative;">
+        {% block content %}{% endblock %}
+      </div>
+    </div>
+
+    <!-- Barra de Estado Inferior Nativa (NSStatusBar) -->
+    {% block statusbar %}{% endblock %}
+  </div>
+
+  <script src="/static/js/app.js?v=20261026_03"></script>
+  <script src="/static/js/money_rain.js"></script>
+  <script src="/static/js/onboarding.js"></script>
+  <script>
+    // Sincronizar navegación activa según la URL actual
+    (function() {
+      const path = window.location.pathname;
+      if (path === '/' || path === '' || path === '/macos' || path.startsWith('/nueva-factura') || path.startsWith('/facturas')) {
+        document.getElementById('nav-item-facturas')?.classList.add('active');
+      } else if (path.startsWith('/presupuestos') || path.startsWith('/nuevo-presupuesto')) {
+        document.getElementById('nav-item-presupuestos')?.classList.add('active');
+      } else if (path.startsWith('/clientes')) {
+        document.getElementById('nav-item-clientes')?.classList.add('active');
+      } else if (path.startsWith('/productos')) {
+        document.getElementById('nav-item-productos')?.classList.add('active');
+      } else if (path.startsWith('/descuentos')) {
+        document.getElementById('nav-item-descuentos')?.classList.add('active');
+      } else if (path.startsWith('/configuracion')) {
+        document.getElementById('nav-item-config')?.classList.add('active');
+      }
+    })();
+  </script>
+  {% block scripts %}{% endblock %}
+</body>
+</html>

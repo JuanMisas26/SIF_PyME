@@ -1,0 +1,200 @@
+{% extends "base.html" %}
+{% block title %}Catálogo — SIF PyME macOS{% endblock %}
+
+{% block content %}
+<main class="main-content" style="padding: 0; display: flex; flex-direction: column; flex: 1; min-height: 0;">
+  
+  <!-- Sub-barra de acciones nativa macOS -->
+  <div class="filter-bar">
+    <div class="filter-group">
+      <span class="filter-label" style="font-weight: 600; color: var(--mac-text-primary);">Catálogo de Productos</span>
+      <span class="filter-label" style="color: var(--mac-text-tertiary);">•</span>
+      <span class="filter-label" style="color: var(--mac-text-secondary);">Productos, variantes y escalados de precio por volumen</span>
+    </div>
+
+    <div class="filter-group">
+      <div class="search-field">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="11" cy="11" r="8"></circle>
+          <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+        </svg>
+        <input type="text" class="search-input" id="filter-search-producto" placeholder="Buscar producto o descripción…" style="width: 220px;" aria-label="Buscar productos">
+      </div>
+      <button class="btn-native btn-primary" id="btn-nuevo-producto" type="button">
+        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
+          <line x1="12" y1="5" x2="12" y2="19"></line>
+          <line x1="5" y1="12" x2="19" y2="12"></line>
+        </svg>
+        Nuevo Producto…
+      </button>
+    </div>
+  </div>
+
+  <!-- Tabla de Productos Estilo macOS (NSTableView) -->
+  <div class="table-container">
+    <table class="mac-table">
+      <thead>
+        <tr>
+          <th style="min-width: 180px;">Nombre del Producto</th>
+          <th style="min-width: 150px;">Variantes y Atributos</th>
+          <th style="min-width: 250px;">Descripción / Detalle</th>
+          <th style="text-align: right; min-width: 130px;">Precio Base / Tramos</th>
+          <th style="text-align: center; width: 65px;">IVA</th>
+          <th style="text-align: center; width: 65px;">IRPF</th>
+          <th style="text-align: right; width: 130px;">Acciones</th>
+        </tr>
+      </thead>
+      <tbody id="productos-tbody">
+        <tr>
+          <td colspan="7" style="text-align: center; padding: 40px; color: var(--mac-text-tertiary);">
+            Cargando catálogo…
+          </td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+</main>
+
+<!-- Modal Nativo Estilo macOS Sheet (NSPanel) -->
+<div class="modal-overlay" id="producto-modal">
+  <div class="modal" style="max-width: 680px; width: 94%; border-radius: 12px; box-shadow: 0 25px 70px rgba(0,0,0,0.28); border: 1px solid rgba(0,0,0,0.18); overflow: hidden;">
+    <div class="modal-header" style="height: 44px; padding: 0 16px; background: #F8F8F9; border-bottom: 1px solid var(--mac-separator);">
+      <h3 class="modal-title" id="modal-producto-title" style="font-size: 13px; font-weight: 600;">Nuevo Producto</h3>
+      <button class="btn-icon" id="btn-close-producto-modal" type="button" title="Cerrar">✕</button>
+    </div>
+
+    <!-- Segmented Control de pestañas nativo de macOS -->
+    <div style="padding: 8px 16px; background: #F8F8F9; border-bottom: 1px solid var(--mac-separator-subtle);">
+      <div class="segmented-control" style="width: 100%; display: flex;">
+        <button type="button" class="segment-item active" id="tab-btn-prod-general" onclick="switchProductoTab('general')" style="flex: 1; text-align: center;">
+          General
+        </button>
+        <button type="button" class="segment-item" id="tab-btn-prod-escalados" onclick="switchProductoTab('escalados')" style="flex: 1; text-align: center;">
+          Escalado de Precios <span id="badge-count-escalados" class="badge" style="margin-left: 4px; font-size: 10px; padding: 1px 5px; display: none; background: #E0E7FF; color: #3730A3;">0</span>
+        </button>
+        <button type="button" class="segment-item" id="tab-btn-prod-variantes" onclick="switchProductoTab('variantes')" style="flex: 1; text-align: center;">
+          Variantes y Colores <span id="badge-count-variantes" class="badge" style="margin-left: 4px; font-size: 10px; padding: 1px 5px; display: none; background: #ECFDF5; color: #065F46;">0</span>
+        </button>
+      </div>
+    </div>
+
+    <div class="modal-body" style="padding: 16px 20px; max-height: 70vh; overflow-y: auto;">
+      <form id="form-producto" novalidate>
+        <div id="producto-modal-alert" class="hidden mb-3" style="background: #FFF2F2; color: var(--mac-system-red); padding: 8px 12px; border-radius: 6px; font-size: 12px; border: 1px solid rgba(255,59,48,0.2);"></div>
+
+        <!-- PESTAÑA 1: DATOS GENERALES -->
+        <div id="prod-tab-content-general">
+          <div class="form-group">
+            <label style="font-size: 11px; font-weight: 500; color: var(--mac-text-secondary); text-transform: uppercase;">Nombre del Producto *</label>
+            <input type="text" class="form-control" name="nombre" required placeholder="Tarjetón invitación con sobre">
+          </div>
+
+          <div class="form-group mt-2">
+            <label style="font-size: 11px; font-weight: 500; color: var(--mac-text-secondary); text-transform: uppercase;">Descripción / Detalle Técnico *</label>
+            <input type="text" class="form-control" name="descripcion" required placeholder="A5 Papel 300 gr verjurado premium">
+          </div>
+
+          <div class="form-row mt-2">
+            <div class="form-group">
+              <label style="font-size: 11px; font-weight: 500; color: var(--mac-text-secondary); text-transform: uppercase;">Precio Base Unitario (€) *</label>
+              <input type="number" class="form-control" name="precio_unitario_base" min="0" step="0.01" placeholder="0,00" required>
+            </div>
+            <div class="form-group">
+              <label style="font-size: 11px; font-weight: 500; color: var(--mac-text-secondary); text-transform: uppercase;">IVA (%)</label>
+              <input type="number" class="form-control" name="porcentaje_iva" min="0" max="100" step="0.5" value="21">
+            </div>
+            <div class="form-group">
+              <label style="font-size: 11px; font-weight: 500; color: var(--mac-text-secondary); text-transform: uppercase;">IRPF (%)</label>
+              <input type="number" class="form-control" name="porcentaje_irpf" min="0" max="100" step="0.5" value="0">
+            </div>
+          </div>
+        </div>
+
+        <!-- PESTAÑA 2: ESCALADOS DE PRECIO POR VOLUMEN -->
+        <div id="prod-tab-content-escalados" style="display: none;">
+          <div style="margin-bottom: 12px; font-size: 12px; color: var(--mac-text-secondary); line-height: 1.45;">
+            Define tarifas reducidas según el volumen encargado. Al seleccionar este producto en facturas o presupuestos, el precio unitario se ajustará de forma automática según la cantidad.
+          </div>
+
+          <div style="background: #F9FAFB; border: 1px solid var(--mac-separator-subtle); border-radius: 8px; overflow: hidden; margin-bottom: 12px;">
+            <table class="mac-table" style="margin: 0; font-size: 12px;">
+              <thead>
+                <tr style="background: #F1F3F5;">
+                  <th style="padding: 6px 10px;">Cant. Mínima</th>
+                  <th style="padding: 6px 10px;">Cant. Máxima</th>
+                  <th style="padding: 6px 10px; text-align: right;">Precio Unitario (€)</th>
+                  <th style="padding: 6px 8px; width: 36px; text-align: center;"></th>
+                </tr>
+              </thead>
+              <tbody id="escalados-tbody">
+                <!-- Filas dinámicas -->
+              </tbody>
+            </table>
+            <div id="escalados-empty" style="padding: 18px; text-align: center; color: var(--mac-text-tertiary); font-size: 12px;">
+              No hay tramos por volumen configurados. Se aplicará siempre el Precio Base.
+            </div>
+          </div>
+
+          <button type="button" class="btn-native" id="btn-add-escalado-row" onclick="agregarFilaEscalado()">
+            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+              <line x1="12" y1="5" x2="12" y2="19"></line>
+              <line x1="5" y1="12" x2="19" y2="12"></line>
+            </svg>
+            Añadir Tramo de Cantidad
+          </button>
+        </div>
+
+        <!-- PESTAÑA 3: VARIANTES Y COLORES -->
+        <div id="prod-tab-content-variantes" style="display: none;">
+          <div style="margin-bottom: 12px; font-size: 12px; color: var(--mac-text-secondary); line-height: 1.45;">
+            Configura colores, acabados, tipos de papel o tamaños disponibles. Podrás seleccionarlos directamente al facturar con su sobrecoste o precio fijo específico.
+          </div>
+
+          <div style="background: #F9FAFB; border: 1px solid var(--mac-separator-subtle); border-radius: 8px; overflow: hidden; margin-bottom: 12px;">
+            <table class="mac-table" style="margin: 0; font-size: 12px;">
+              <thead>
+                <tr style="background: #F1F3F5;">
+                  <th style="padding: 6px 8px; width: 110px;">Tipo</th>
+                  <th style="padding: 6px 8px;">Nombre / Valor</th>
+                  <th style="padding: 6px 8px; width: 60px; text-align: center;">Color</th>
+                  <th style="padding: 6px 8px; width: 120px; text-align: right;">Recargo (+€)</th>
+                  <th style="padding: 6px 8px; width: 36px; text-align: center;"></th>
+                </tr>
+              </thead>
+              <tbody id="variantes-tbody">
+                <!-- Filas dinámicas -->
+              </tbody>
+            </table>
+            <div id="variantes-empty" style="padding: 18px; text-align: center; color: var(--mac-text-tertiary); font-size: 12px;">
+              Este producto no tiene variantes configuradas.
+            </div>
+          </div>
+
+          <button type="button" class="btn-native" id="btn-add-variante-row" onclick="agregarFilaVariante()">
+            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+              <line x1="12" y1="5" x2="12" y2="19"></line>
+              <line x1="5" y1="12" x2="19" y2="12"></line>
+            </svg>
+            Añadir Variante o Color
+          </button>
+        </div>
+
+        <div class="modal-footer" style="padding-top: 16px; margin-top: 16px; border-top: 1px solid var(--mac-separator-subtle); display: flex; justify-content: flex-end; gap: 8px;">
+          <button type="button" class="btn-native" id="btn-cancel-producto-modal" onclick="closeProductoModal()">Cancelar</button>
+          <button type="submit" class="btn-native btn-primary" id="btn-submit-producto">Guardar Producto</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block statusbar %}
+<footer class="mac-statusbar">
+  <div class="statusbar-item">
+    <span id="status-productos-count">Cargando catálogo...</span>
+  </div>
+  <div class="statusbar-item" id="productos-pagination-container">
+  </div>
+</footer>
+{% endblock %}

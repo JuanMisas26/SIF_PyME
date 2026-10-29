@@ -1,0 +1,1515 @@
+{% extends "base.html" %}
+
+{% block title %}{{ "Editar Presupuesto" if presupuesto_id else "Nuevo Presupuesto" }} - SIF PyME{% endblock %}
+
+{% block content %}
+<main class="main-content" style="padding: 0; display: flex; flex-direction: column; flex: 1; min-height: 0; overflow-y: auto;">
+  
+  <!-- Sub-barra de acciones nativa macOS -->
+  <div class="filter-bar">
+    <div class="filter-group">
+      <span class="filter-label" style="font-weight: 600; color: var(--mac-text-primary);">{{ "Editar Presupuesto" if presupuesto_id else "Nuevo Presupuesto" }}</span>
+      <span class="filter-label" style="color: var(--mac-text-tertiary);">•</span>
+      <span class="filter-label" style="color: var(--mac-text-secondary);">Propuesta comercial con opciones comparativas</span>
+    </div>
+
+    <div class="filter-group">
+      <a href="/presupuestos" class="btn-native">Volver a Presupuestos</a>
+      <button type="button" class="btn-native" id="btn-preview-presupuesto" onclick="previsualizarPresupuestoPDF()">
+        Vista Previa PDF
+      </button>
+      <button type="button" id="btn-guardar-presupuesto" class="btn-native btn-primary" onclick="guardarPresupuesto()">
+        Guardar Presupuesto
+      </button>
+    </div>
+  </div>
+
+  <div style="padding: 24px 24px 220px 24px; max-width: 1040px; margin: 0 auto; width: 100%;">
+    <!-- BANNER DE PRESUPUESTO BLOQUEADO (Aceptado o Facturado) -->
+    <div id="banner-presupuesto-bloqueado" style="display: none; align-items: center; justify-content: space-between; background: #FFF8E1; border: 1px solid #FFE082; border-left: 4px solid #FFA000; border-radius: 8px; padding: 14px 18px; margin-bottom: 20px; box-shadow: 0 1px 3px rgba(0,0,0,0.05); gap: 16px;">
+      <div style="display: flex; align-items: flex-start; gap: 12px;">
+        <span style="font-size: 22px; line-height: 1;">🔒</span>
+        <div>
+          <div style="font-size: 13px; font-weight: 600; color: #5D4037;">
+            Presupuesto en estado <span id="bloqueado-estado-badge" style="background: #FFE082; color: #5D4037; font-weight: 700; padding: 2px 7px; border-radius: 4px; font-size: 11px;"></span> (Solo lectura)
+          </div>
+          <div id="bloqueado-estado-desc" style="font-size: 12px; color: #795548; margin-top: 4px; line-height: 1.4;">
+            No se pueden modificar directamente los datos para evitar discrepancias. Para editarlo, debe volver primero a estado <strong>Borrador</strong>.
+          </div>
+        </div>
+      </div>
+      <div style="flex-shrink: 0;">
+        <button type="button" id="btn-reabrir-desde-edicion" class="btn-native btn-primary" onclick="reabrirABorradorDesdeEdicion()" style="height: 32px; font-size: 12px; font-weight: 600; display: inline-flex; align-items: center; gap: 6px; box-shadow: 0 1px 2px rgba(0,0,0,0.1);">
+          <span>↩️</span> Volver a Borrador para editar
+        </button>
+      </div>
+    </div>
+
+    <div id="presupuesto-errors" class="alert alert-danger" style="display: none; margin-bottom: 20px;"></div>
+
+    <!-- DATOS GENERALES -->
+    <div class="card" style="background:#FFFFFF; border: 1px solid var(--mac-separator); border-radius: 8px; box-shadow: 0 1px 2px rgba(0,0,0,0.04); margin-bottom: 20px;">
+      <div class="card-header" style="height: 38px; padding: 0 16px; background: #F8F8F9; border-bottom: 1px solid var(--mac-separator); display: flex; align-items: center;">
+        <h3 class="card-title" style="font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.02em; color: var(--mac-text-secondary); margin: 0;">
+          1. Datos del Cliente y Propuesta
+        </h3>
+      </div>
+      <div class="card-body" style="padding: 18px 20px;">
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 16px;">
+          <!-- Selector de cliente -->
+          <div class="form-group" style="grid-column: span 2;">
+            <label style="font-size: 11px; font-weight: 500; color: var(--mac-text-secondary); text-transform: uppercase;">Cliente (Particular o Empresa) *</label>
+            <div style="display: flex; gap: 8px;">
+              <div style="position: relative; flex: 1;" class="autocomplete-wrapper">
+                <input type="text" id="pres-cliente-search" class="form-control" placeholder="Buscar cliente por nombre o NIF…" autocomplete="off">
+                <input type="hidden" id="pres-cliente-id">
+                <div class="autocomplete-dropdown" id="pres-cliente-dropdown"></div>
+              </div>
+              <button type="button" class="btn-native" onclick="openQuickClienteModal('presupuesto')">
+                Nuevo Cliente…
+              </button>
+            </div>
+            <div id="pres-cliente-preview" style="display: none; margin-top: 8px; padding: 10px 14px; background: var(--mac-sidebar-bg); border: 1px solid var(--mac-separator-subtle); border-radius: 6px; font-size: 12px;">
+              <span id="pres-preview-nombre" style="font-weight: 600;"></span>
+              <span id="pres-preview-doc" style="color: var(--mac-text-secondary); margin-left: 8px;"></span>
+              <span id="pres-preview-tel" style="color: var(--mac-text-secondary); margin-left: 8px;"></span>
+            </div>
+          </div>
+
+          <!-- Identificador -->
+          <div class="form-group">
+            <label style="font-size: 11px; font-weight: 500; color: var(--mac-text-secondary); text-transform: uppercase;">Identificador *</label>
+            <div style="display: flex; gap: 6px;">
+              <input type="text" id="pres-numero" class="form-control font-mono" placeholder="2026-10-18-cliente">
+              <button type="button" class="btn-native" onclick="sugerirNumero()" title="Sugerir según cliente y fecha">
+                Sugerir
+              </button>
+            </div>
+          </div>
+
+          <!-- Fechas -->
+          <div class="form-group">
+            <label style="font-size: 11px; font-weight: 500; color: var(--mac-text-secondary); text-transform: uppercase;">Fecha de Emisión *</label>
+            <input type="date" id="pres-fecha" class="form-control">
+          </div>
+
+          <div class="form-group">
+            <label style="font-size: 11px; font-weight: 500; color: var(--mac-text-secondary); text-transform: uppercase;">Validez Hasta</label>
+            <input type="date" id="pres-fecha-validez" class="form-control">
+          </div>
+
+          <div class="form-group">
+            <label style="font-size: 11px; font-weight: 500; color: var(--mac-text-secondary); text-transform: uppercase;">Estado de la Oferta</label>
+            <select id="pres-estado" class="native-select" style="width: 100%;">
+              <option value="Borrador">Borrador</option>
+              <option value="Enviado">Enviado</option>
+              <option value="Aceptado" disabled>Aceptado (mediante acción Aceptar)</option>
+              <option value="Facturado" disabled>Facturado (mediante acción Facturar)</option>
+              <option value="Rechazado">Rechazado</option>
+            </select>
+          </div>
+
+          <!-- Título y subtítulo -->
+          <div class="form-group" style="grid-column: 1 / -1;">
+            <label style="font-size: 11px; font-weight: 500; color: var(--mac-text-secondary); text-transform: uppercase;">Título del Dossier (Portada)</label>
+            <input type="text" id="pres-titulo" class="form-control" placeholder="Ej: Presupuesto para Cristina y Martín" value="Presupuesto para invitaciones">
+          </div>
+
+          <div class="form-group" style="grid-column: 1 / -1;">
+            <label style="font-size: 11px; font-weight: 500; color: var(--mac-text-secondary); text-transform: uppercase;">Subtítulo de las Páginas</label>
+            <input type="text" id="pres-subtitulo" class="form-control" placeholder="Ej: Desglose de partidas y alcance" value="Precios para el diseño de invitaciones de boda">
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- GESTOR DE OPCIONES / VARIANTES -->
+    <div class="card" style="background:#FFFFFF; border: 1px solid var(--mac-separator); border-radius: 8px; box-shadow: 0 1px 2px rgba(0,0,0,0.04); margin-bottom: 20px; overflow: visible;">
+      <div class="card-header" style="height: 44px; padding: 0 16px; background: #F8F8F9; border-bottom: 1px solid var(--mac-separator); display: flex; justify-content: space-between; align-items: center;">
+        <div>
+          <h3 style="font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.02em; color: var(--mac-text-secondary); margin: 0;">
+            2. Opciones y Variantes
+          </h3>
+        </div>
+        <div style="display: flex; gap: 8px;">
+          <button type="button" class="btn-native" id="btn-add-opcion" onclick="agregarNuevaOpcion()">
+            Añadir Opción
+          </button>
+          <button type="button" class="btn-native" id="btn-duplicate-opcion" onclick="duplicarOpcionActual()">
+            Duplicar Opción
+          </button>
+        </div>
+      </div>
+
+      <div class="card-body" style="padding: 18px 20px; overflow: visible;">
+        <!-- Pestañas de Opciones -->
+        <div id="tabs-opciones-container" style="display: flex; gap: 6px; border-bottom: 1px solid var(--mac-separator); margin-bottom: 16px; overflow-x: auto;">
+          <!-- Renderizado dinámico de pestañas -->
+        </div>
+
+        <!-- Contenido de la opción activa -->
+        <div id="opcion-activa-wrapper">
+          <!-- Renderizado dinámico de la opción seleccionada -->
+        </div>
+      </div>
+    </div>
+  </div>
+</main>
+
+<!-- MODAL RÁPIDO CREAR CLIENTE IN-SITU -->
+<div class="modal-overlay" id="quick-cliente-modal">
+  <div class="modal" style="max-width: 520px; border-radius: 10px; box-shadow: 0 20px 60px rgba(0,0,0,0.22); border: 1px solid rgba(0,0,0,0.18);">
+    <div class="modal-header" style="height: 44px; padding: 0 16px; background: #F8F8F9; border-bottom: 1px solid var(--mac-separator);">
+      <h3 class="modal-title" style="font-size: 13px; font-weight: 600;">Nuevo Cliente Rápido</h3>
+      <button type="button" class="btn-icon" id="btn-close-quick-cliente-modal" onclick="closeQuickClienteModal()">✕</button>
+    </div>
+    <form id="form-quick-cliente" onsubmit="submitQuickCliente(event)">
+      <div class="modal-body" style="padding: 18px 20px;">
+        <div id="quick-cliente-alert" class="hidden mb-3" style="background:#FFF2F2; color:var(--mac-system-red); padding:8px 12px; border-radius:6px; font-size:12px; border: 1px solid rgba(255,59,48,0.2);"></div>
+
+        <div class="form-group">
+          <label style="font-size: 11px; font-weight: 500; color: var(--mac-text-secondary); text-transform: uppercase;">Nombre o Razón Social *</label>
+          <input type="text" id="quick_razon_social" name="razon_social" class="form-control" required placeholder="Nombre comercial o particular">
+        </div>
+
+        <div class="form-group mt-2">
+          <label style="font-size: 11px; font-weight: 500; color: var(--mac-text-secondary); text-transform: uppercase;">Teléfono</label>
+          <input type="text" id="quick_telefono" name="telefono" class="form-control" placeholder="+34 600 000 000">
+        </div>
+
+        <div class="form-group mt-2">
+          <label style="font-size: 11px; font-weight: 500; color: var(--mac-text-secondary); text-transform: uppercase;">Email</label>
+          <input type="email" id="quick_email" name="email" class="form-control" placeholder="cliente@correo.com">
+        </div>
+
+        <div class="form-group mt-2">
+          <label style="font-size: 11px; font-weight: 500; color: var(--mac-text-secondary); text-transform: uppercase;">NIF / CIF</label>
+          <input type="text" id="quick_nif_cif" name="nif_cif" class="form-control font-mono" placeholder="B12345678">
+        </div>
+
+        <div class="form-group mt-2">
+          <label style="font-size: 11px; font-weight: 500; color: var(--mac-text-secondary); text-transform: uppercase;">Dirección</label>
+          <input type="text" id="quick_direccion" name="direccion" class="form-control" placeholder="Calle Mayor, 1">
+        </div>
+
+        <div class="form-row mt-2" style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+          <div class="form-group">
+            <label style="font-size: 11px; font-weight: 500; color: var(--mac-text-secondary); text-transform: uppercase;">Ciudad</label>
+            <input type="text" id="quick_ciudad" name="ciudad" class="form-control" placeholder="Madrid">
+          </div>
+          <div class="form-group">
+            <label style="font-size: 11px; font-weight: 500; color: var(--mac-text-secondary); text-transform: uppercase;">Provincia</label>
+            <input type="text" id="quick_provincia" name="provincia" class="form-control" placeholder="Madrid">
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer" style="padding-top: 18px; margin-top: 16px; border-top: 1px solid var(--mac-separator-subtle); display: flex; justify-content: flex-end; gap: 8px;">
+        <button type="button" class="btn-native" id="btn-cancel-quick-cliente" onclick="closeQuickClienteModal()">Cancelar</button>
+        <button type="submit" class="btn-native btn-primary" id="btn-submit-quick-cliente">Guardar y Seleccionar</button>
+      </div>
+    </form>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+  const EDITING_ID = {{ presupuesto_id | tojson }};
+
+  // Estructura en memoria de las opciones del presupuesto
+  let opcionesData = [
+    {
+      id: null,
+      nombre_opcion: 'Opción A',
+      lineas: [
+        { descripcion: '', detalle_material: '', cantidad: 100, precio_unitario: 0.0 }
+      ]
+    }
+  ];
+
+  let activeOpIndex = 0;
+  let catalogoProductos = [];
+  let descuentosPresupuestoCache = [];
+  let esPresupuestoBloqueado = false;
+  let presupuestoActual = null;
+
+  document.addEventListener('DOMContentLoaded', async () => {
+    // Configurar fechas por defecto
+    const hoy = new Date().toISOString().split('T')[0];
+    document.getElementById('pres-fecha').value = hoy;
+
+    const en30dias = new Date();
+    en30dias.setDate(en30dias.getDate() + 30);
+    document.getElementById('pres-fecha-validez').value = en30dias.toISOString().split('T')[0];
+
+    // Cargar catálogo de productos y descuentos
+    try {
+      const [resProd, resDesc] = await Promise.all([
+        fetch('/api/productos'),
+        fetch('/api/descuentos?activo=true')
+      ]);
+      if (resProd.ok) catalogoProductos = await resProd.json();
+      if (resDesc.ok) descuentosPresupuestoCache = await resDesc.json();
+    } catch(e){}
+
+    // Autocomplete cliente
+    setupClienteAutocomplete();
+
+    // Si estamos editando, cargar datos existentes
+    if (EDITING_ID) {
+      await cargarPresupuestoParaEditar(EDITING_ID);
+    } else {
+      renderTabs();
+      renderActiveOpcion();
+    }
+  });
+
+  function setupClienteAutocomplete() {
+    const input = document.getElementById('pres-cliente-search');
+    const dropdown = document.getElementById('pres-cliente-dropdown');
+    new Autocomplete(input, dropdown, {
+      fetchUrl: '/api/clientes',
+      minChars: 2,
+      renderItem: (c) => `
+        <div style="font-weight: 600;">${escapeHtml(c.razon_social)}</div>
+        <div style="font-size: 11px; color: var(--color-gray-500);">
+          ${c.nif_cif ? `DNI: ${c.nif_cif}` : 'Particular'} ${c.telefono ? `· Tel: ${c.telefono}` : ''}
+        </div>
+      `,
+      onSelect: (c) => {
+        seleccionarCliente(c);
+      },
+      onNoResults: (val) => `
+        <div style="padding: 10px; text-align: center; color: var(--color-gray-500); font-size: 13px;">
+          No existe cliente "${escapeHtml(val)}"
+          <div style="margin-top: 6px;">
+            <button type="button" class="btn btn-primary btn-sm" onclick="openQuickClienteModal('presupuesto', '${escapeHtml(val)}')">
+              ➕ Crear "${escapeHtml(val)}"
+            </button>
+          </div>
+        </div>
+      `,
+      onCreateClick: (val) => {
+        openQuickClienteModal('presupuesto', val);
+      }
+    });
+  }
+
+  function seleccionarCliente(c) {
+    document.getElementById('pres-cliente-id').value = c.id;
+    document.getElementById('pres-cliente-search').value = c.razon_social;
+    document.getElementById('pres-preview-nombre').innerText = c.razon_social;
+    document.getElementById('pres-preview-doc').innerText = c.nif_cif ? `DNI/CIF: ${c.nif_cif}` : 'Cliente Particular (sin DNI)';
+    document.getElementById('pres-preview-tel').innerText = c.telefono ? `· Tel: ${c.telefono}` : (c.email ? `· ${c.email}` : '');
+    document.getElementById('pres-cliente-preview').style.display = 'block';
+
+    // Personalizar título del dossier si está con el valor por defecto
+    const presTituloInput = document.getElementById('pres-titulo');
+    if (presTituloInput && (!presTituloInput.value || presTituloInput.value === 'Presupuesto de Servicios' || presTituloInput.value.startsWith('Presupuesto para '))) {
+      presTituloInput.value = `Presupuesto para ${c.razon_social}`;
+    }
+
+    // Si el identificador no se ha tocado o está vacío, sugerir automáticamente
+    const currentNum = document.getElementById('pres-numero').value.trim();
+    if (!currentNum || currentNum.endsWith('-nuevo-cliente')) {
+      sugerirNumero();
+    }
+  }
+
+  window.seleccionarCliente = seleccionarCliente;
+
+  async function sugerirNumero() {
+    const nombre = document.getElementById('pres-cliente-search').value.trim() || 'cliente';
+    try {
+      const res = await fetch(`/api/presupuestos/siguiente-numero?cliente_nombre=${encodeURIComponent(nombre)}`);
+      if (res.ok) {
+        const data = await res.json();
+        document.getElementById('pres-numero').value = data.sugerencia;
+      }
+    } catch (e) {
+      console.error(e);
+    }
+  }
+
+  async function cargarPresupuestoParaEditar(id) {
+    try {
+      const res = await fetch(`/api/presupuestos/${id}`);
+      if (!res.ok) throw new Error('No se pudo cargar el presupuesto');
+      const data = await res.json();
+
+      document.getElementById('pres-numero').value = data.numero_presupuesto;
+      document.getElementById('pres-fecha').value = data.fecha;
+      if (data.fecha_validez) document.getElementById('pres-fecha-validez').value = data.fecha_validez;
+      document.getElementById('pres-titulo').value = data.titulo;
+      document.getElementById('pres-subtitulo').value = data.subtitulo || '';
+      document.getElementById('pres-estado').value = data.estado;
+
+      seleccionarCliente(data.cliente);
+
+      opcionesData = data.opciones.map(op => ({
+        id: op.id,
+        nombre_opcion: op.nombre_opcion,
+        descuento_id: op.descuento_id || null,
+        descuento_nombre: op.descuento_nombre || null,
+        descuento_tipo: op.descuento_tipo || null,
+        descuento_valor: op.descuento_valor || 0.0,
+        descuento_importe_total: op.descuento_importe_total || 0.0,
+        descuento_visible: op.descuento_visible !== undefined ? op.descuento_visible : true,
+        lineas: op.lineas.map(l => ({
+          descripcion: l.descripcion,
+          detalle_material: l.detalle_material,
+          cantidad: l.cantidad,
+          precio_unitario: l.precio_unitario,
+          producto_id: l.producto_id || null,
+          descuento_id: l.descuento_id || null,
+          precio_unitario_original: l.precio_unitario_original || null
+        }))
+      }));
+
+      activeOpIndex = 0;
+      presupuestoActual = data;
+      if (data.estado === 'Facturado') {
+        aplicarBloqueoEdicion(data);
+      } else {
+        desbloquearFormulario();
+      }
+      renderTabs();
+      renderActiveOpcion();
+    } catch (err) {
+      showToast(err.message, 'danger');
+    }
+  }
+
+  function bloquearFormulario() {
+    esPresupuestoBloqueado = true;
+    const ids = ['pres-cliente-search', 'pres-numero', 'pres-fecha', 'pres-fecha-validez', 'pres-estado', 'pres-titulo', 'pres-subtitulo'];
+    ids.forEach(id => {
+      const el = document.getElementById(id);
+      if (el) el.disabled = true;
+    });
+    const btnSugerir = document.querySelector('button[onclick="sugerirNumero()"]');
+    if (btnSugerir) btnSugerir.disabled = true;
+    const btnNuevoCliente = document.querySelector('button[onclick*="openQuickClienteModal"]');
+    if (btnNuevoCliente) btnNuevoCliente.disabled = true;
+    const btnAddOp = document.getElementById('btn-add-opcion');
+    if (btnAddOp) btnAddOp.disabled = true;
+    const btnDupOp = document.getElementById('btn-duplicate-opcion');
+    if (btnDupOp) btnDupOp.disabled = true;
+    const btnGuardar = document.getElementById('btn-guardar-presupuesto');
+    if (btnGuardar) {
+      btnGuardar.disabled = true;
+      btnGuardar.title = 'Presupuesto bloqueado en modo solo lectura. Vuelva a Borrador para editar.';
+    }
+  }
+
+  function desbloquearFormulario() {
+    esPresupuestoBloqueado = false;
+    const ids = ['pres-cliente-search', 'pres-numero', 'pres-fecha', 'pres-fecha-validez', 'pres-estado', 'pres-titulo', 'pres-subtitulo'];
+    ids.forEach(id => {
+      const el = document.getElementById(id);
+      if (el) el.disabled = false;
+    });
+    const btnSugerir = document.querySelector('button[onclick="sugerirNumero()"]');
+    if (btnSugerir) btnSugerir.disabled = false;
+    const btnNuevoCliente = document.querySelector('button[onclick*="openQuickClienteModal"]');
+    if (btnNuevoCliente) btnNuevoCliente.disabled = false;
+    const btnAddOp = document.getElementById('btn-add-opcion');
+    if (btnAddOp) btnAddOp.disabled = false;
+    const btnDupOp = document.getElementById('btn-duplicate-opcion');
+    if (btnDupOp) btnDupOp.disabled = false;
+    const btnGuardar = document.getElementById('btn-guardar-presupuesto');
+    if (btnGuardar) {
+      btnGuardar.disabled = false;
+      btnGuardar.removeAttribute('title');
+    }
+  }
+
+  function aplicarBloqueoEdicion(data) {
+    bloquearFormulario();
+    const banner = document.getElementById('banner-presupuesto-bloqueado');
+    if (banner) {
+      banner.style.display = 'flex';
+      const badge = document.getElementById('bloqueado-estado-badge');
+      if (badge) badge.innerText = data.estado;
+      const desc = document.getElementById('bloqueado-estado-desc');
+      if (desc) {
+        if (data.estado === 'Facturado') {
+          desc.innerHTML = `Este presupuesto ya ha sido convertido en factura${data.numero_factura ? ` (<strong>${escapeHtml(data.numero_factura)}</strong>)` : ''}. Para modificar partidas o condiciones, debe volver a <strong>Borrador</strong>. Al hacerlo, la factura vinculada se cancelará y se moverá a la papelera.`;
+        } else {
+          desc.innerHTML = `Este presupuesto ya fue aceptado por el cliente. Para modificar partidas, precios o alcance, debe volver primero a estado <strong>Borrador</strong> (se desvinculará la opción previamente aprobada).`;
+        }
+      }
+    }
+  }
+
+  async function reabrirABorradorDesdeEdicion() {
+    if (!EDITING_ID || !presupuestoActual) return;
+    const esFacturado = presupuestoActual.estado === 'Facturado';
+    const numFactura = presupuestoActual.numero_factura;
+    const fnConfirm = window.showMacConfirmDialog || window.showMacConfirm;
+    const msg = esFacturado
+      ? `Este presupuesto está Facturado${numFactura ? ` (Factura asociada: ${numFactura})` : ''}.\n\nPara modificarlo volverá a estado "Borrador" y la factura emitida se cancelará y se moverá a la papelera de reciclaje.\n\n¿Deseas volver a Borrador para habilitar la edición?`
+      : `Este presupuesto está actualmente en estado "Aceptado".\n\nPara modificarlo volverá a "Borrador" y se desvinculará la opción previamente aprobada.\n\n¿Deseas volver a Borrador para habilitar la edición?`;
+
+    let ok = false;
+    if (typeof fnConfirm === 'function') {
+      ok = await fnConfirm({
+        title: `¿Reabrir presupuesto a Borrador?`,
+        message: msg,
+        confirmText: 'Volver a Borrador y Desbloquear',
+        isDestructive: esFacturado
+      });
+    } else {
+      ok = confirm(`¿Reabrir presupuesto a Borrador?\n\n${msg}`);
+    }
+    if (!ok) return;
+
+    const btnReabrir = document.getElementById('btn-reabrir-desde-edicion');
+    if (btnReabrir) {
+      btnReabrir.disabled = true;
+      btnReabrir.innerText = 'Reabriendo...';
+    }
+
+    try {
+      await apiFetch(`/api/presupuestos/${EDITING_ID}/estado`, {
+        method: 'PATCH',
+        body: {
+          estado: 'Borrador',
+          motivo: `Reabierto a Borrador desde edición (anterior: ${presupuestoActual.estado})`
+        }
+      });
+      presupuestoActual.estado = 'Borrador';
+      document.getElementById('pres-estado').value = 'Borrador';
+      const banner = document.getElementById('banner-presupuesto-bloqueado');
+      if (banner) banner.style.display = 'none';
+      desbloquearFormulario();
+      renderTabs();
+      renderActiveOpcion();
+      if (window.Toast) {
+        Toast.success('Presupuesto desbloqueado', 'El presupuesto ha vuelto a Borrador. Ya puedes editar las partidas y guardarlo.');
+      } else if (typeof showToast === 'function') {
+        showToast('El presupuesto ha vuelto a Borrador. Ya puedes editarlo.', 'success');
+      }
+    } catch (err) {
+      if (window.Toast) Toast.error('Error al reabrir', err.message);
+      else alert(err.message);
+      if (btnReabrir) {
+        btnReabrir.disabled = false;
+        btnReabrir.innerText = '↩️ Volver a Borrador para editar';
+      }
+    }
+  }
+
+  function renderTabs() {
+    const container = document.getElementById('tabs-opciones-container');
+    container.innerHTML = opcionesData.map((op, idx) => {
+      const isActive = idx === activeOpIndex;
+      const totalOp = calcularTotalOpcion(op);
+      return `
+        <button type="button" onclick="cambiarTab(${idx})" style="
+          padding: 8px 16px; 
+          border: none; 
+          border-bottom: 3px solid ${isActive ? 'var(--primary, #2962ff)' : 'transparent'}; 
+          background: ${isActive ? '#ffffff' : 'transparent'}; 
+          font-weight: ${isActive ? '700' : '500'}; 
+          color: ${isActive ? 'var(--primary-dark, #1e43cc)' : 'var(--gray-600, #475569)'}; 
+          cursor: pointer; 
+          border-radius: 6px 6px 0 0; 
+          display: flex; 
+          align-items: center; 
+          gap: 8px;
+        ">
+          <span id="tab-title-${idx}">${escapeHtml(op.nombre_opcion || `Opción ${idx+1}`)}</span>
+          <span id="tab-badge-${idx}" style="
+            font-size: 11px;
+            font-weight: 700;
+            padding: 3px 8px;
+            background: ${isActive ? '#2962ff' : '#e2e8f0'};
+            color: ${isActive ? '#ffffff' : '#334155'};
+            border-radius: 12px;
+            display: inline-block;
+            letter-spacing: 0.2px;
+          ">
+            ${formatCurrency(totalOp)}
+          </span>
+          ${!esPresupuestoBloqueado && opcionesData.length > 1 ? `
+            <span onclick="eliminarOpcion(event, ${idx})" style="color: var(--danger, #dc2626); margin-left: 4px; font-weight: bold;" title="Eliminar opción">&times;</span>
+          ` : ''}
+        </button>
+      `;
+    }).join('');
+  }
+
+  function cambiarTab(idx) {
+    activeOpIndex = idx;
+    renderTabs();
+    renderActiveOpcion();
+  }
+
+  function agregarNuevaOpcion() {
+    if (esPresupuestoBloqueado) return;
+    const letra = String.fromCharCode(65 + opcionesData.length); // A, B, C...
+    opcionesData.push({
+      id: null,
+      nombre_opcion: `Opción ${letra}`,
+      lineas: [
+        { descripcion: '', detalle_material: '', cantidad: 100, precio_unitario: 0.0 }
+      ]
+    });
+    activeOpIndex = opcionesData.length - 1;
+    renderTabs();
+    renderActiveOpcion();
+  }
+
+  function duplicarOpcionActual() {
+    if (esPresupuestoBloqueado) return;
+    const opActual = opcionesData[activeOpIndex];
+    if (!opActual) return;
+    const letra = String.fromCharCode(65 + opcionesData.length);
+    opcionesData.push({
+      id: null,
+      nombre_opcion: `Opción ${letra} (Copia de ${opActual.nombre_opcion})`,
+      lineas: opActual.lineas.map(l => ({
+        descripcion: l.descripcion,
+        detalle_material: l.detalle_material,
+        cantidad: l.cantidad,
+        precio_unitario: l.precio_unitario
+      }))
+    });
+    activeOpIndex = opcionesData.length - 1;
+    renderTabs();
+    renderActiveOpcion();
+  }
+
+  async function eliminarOpcion(e, idx) {
+    e.stopPropagation();
+    if (esPresupuestoBloqueado) return;
+    if (opcionesData.length <= 1) {
+      showToast('Debe haber al menos una opción en el presupuesto.', 'warning');
+      return;
+    }
+    const nombreOp = opcionesData[idx].nombre_opcion || ('Opción ' + String.fromCharCode(65 + idx));
+    const fnConfirm = window.showMacConfirmDialog || window.showMacConfirm;
+    let ok = false;
+    if (typeof fnConfirm === 'function') {
+      ok = await fnConfirm({
+        title: '¿Eliminar ' + nombreOp + '?',
+        message: 'Esta acción eliminará la opción y todas sus partidas asociadas.',
+        confirmText: 'Eliminar Opción',
+        isDestructive: true
+      });
+    } else {
+      ok = confirm('¿Eliminar ' + nombreOp + '?');
+    }
+    if (!ok) return;
+
+    opcionesData.splice(idx, 1);
+    if (activeOpIndex >= opcionesData.length) activeOpIndex = opcionesData.length - 1;
+    renderTabs();
+    renderActiveOpcion();
+  }
+
+  function renderActiveOpcion() {
+    const op = opcionesData[activeOpIndex];
+    if (!op) return;
+
+    const wrapper = document.getElementById('opcion-activa-wrapper');
+    const totalOp = calcularTotalOpcion(op);
+    const subtotalOriginal = (op.lineas || []).reduce((acc, l) => {
+      const pOrig = (l.precio_unitario_original !== undefined && l.precio_unitario_original !== null)
+        ? l.precio_unitario_original
+        : (l.precio_unitario || 0);
+      return acc + (l.cantidad || 0) * pOrig;
+    }, 0);
+    const subtotalBrutoDisplay = op.descuento_visible !== false
+      ? (totalOp + (op.descuento_importe_total || 0))
+      : Math.round(subtotalOriginal * 100) / 100;
+    const importeDto = op.descuento_importe_total || 0;
+    const esOculto = op.descuento_visible === false;
+    const tieneDto = Boolean(op.descuento_id && importeDto > 0);
+
+    wrapper.innerHTML = `
+      <div style="background: #f8fafc; border: 1px solid var(--color-gray-200); border-radius: 8px; padding: 16px; margin-bottom: 16px;">
+        <div class="form-group" style="margin-bottom: 0;">
+          <label class="form-label">Nombre de esta opción (aparecerá en la cabecera de la página) *</label>
+          <input type="text" class="form-control" ${esPresupuestoBloqueado ? "disabled" : ""} value="${escapeHtml(op.nombre_opcion)}" oninput="actualizarNombreOpcion(this.value)" placeholder="Ej. Opción A - Sobre artesanal">
+        </div>
+      </div>
+
+      <div class="table-responsive" style="overflow: visible;">
+        <table class="table" style="background: #fff; overflow: visible;">
+          <thead>
+            <tr>
+              <th style="width: 40%;">Productos / Descripción *</th>
+              <th style="width: 30%;">Detalle / Papel y Gramaje</th>
+              <th style="width: 10%; text-align: center;">Cantidad</th>
+              <th style="width: 10%; text-align: right;">Precio Unit. (€)</th>
+              <th style="width: 10%; text-align: right;">Total sin IVA</th>
+              <th style="width: 40px;"></th>
+            </tr>
+          </thead>
+          <tbody>
+            ${op.lineas.map((l, lIdx) => {
+              const sub = (l.cantidad * l.precio_unitario) || 0;
+              return `
+                <tr id="linea-row-${lIdx}">
+                  <td>
+                    <div class="autocomplete-wrapper" style="position: relative;">
+                      <div style="display: flex; gap: 4px; align-items: center;">
+                        <input type="text"
+                               class="form-control form-control-sm desc-producto-input"
+                               id="desc-input-${lIdx}"
+                               ${esPresupuestoBloqueado ? "disabled" : ""}
+                               value="${escapeHtml(l.descripcion)}"
+                               oninput="onProductoInput(${lIdx}, this.value)"
+                               onfocus="onProductoFocus(${lIdx})"
+                               placeholder="Buscar del catálogo o escribir uno nuevo…"
+                               autocomplete="off">
+                        <button type="button"
+                                class="btn btn-secondary btn-sm"
+                                style="padding: 2px 7px; font-size: 11px; white-space: nowrap;"
+                                ${esPresupuestoBloqueado ? "disabled style=\"display:none;\"" : ""} title="Ver catálogo de productos de la base de datos"
+                                onclick="toggleCatalogoDropdown(event, ${lIdx})">
+                          Catálogo
+                        </button>
+                      </div>
+                      <div class="autocomplete-dropdown" id="ac-pres-drop-${lIdx}"></div>
+                    </div>
+                  </td>
+                  <td>
+                    <input type="text" class="form-control form-control-sm" id="mat-input-${lIdx}" ${esPresupuestoBloqueado ? "disabled" : ""} value="${escapeHtml(l.detalle_material || '')}" oninput="actualizarLinea(${lIdx}, 'detalle_material', this.value)" placeholder="Ej. A5 Papel 300 gr verjurado">
+                  </td>
+                  <td>
+                    <input type="number" class="form-control form-control-sm" id="cant-input-${lIdx}" ${esPresupuestoBloqueado ? "disabled" : ""} style="text-align: center;" value="${l.cantidad}" min="1" step="1" oninput="actualizarLinea(${lIdx}, 'cantidad', parseFloat(this.value) || 0)">
+                  </td>
+                  <td>
+                    <input type="number" class="form-control form-control-sm" id="precio-input-${lIdx}" ${esPresupuestoBloqueado ? "disabled" : ""} style="text-align: right;" value="${l.precio_unitario}" step="0.01" oninput="actualizarLinea(${lIdx}, 'precio_unitario', parseFloat(this.value) || 0)">
+                  </td>
+                  <td id="subtotal-cell-${lIdx}" style="text-align: right; font-weight: 600; color: var(--color-gray-900);">
+                    ${formatCurrency(sub)}
+                  </td>
+                  <td style="text-align: center;">
+                    ${esPresupuestoBloqueado ? "" : `<button type="button" class="btn btn-danger btn-sm" style="padding: 2px 6px;" onclick="eliminarLinea(${lIdx})" title="Quitar producto">&times;</button>`}
+                  </td>
+                </tr>
+              `;
+            }).join('')}
+          </tbody>
+        </table>
+      </div>
+
+      <!-- Bloque de Descuento de la Opción -->
+      <div style="margin-top: 14px; background: var(--mac-sidebar-bg); border: 1px solid var(--mac-separator-subtle); border-radius: 8px; padding: 10px 14px; display: flex; flex-direction: column; gap: 8px;">
+        <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px;">
+          <div style="display: flex; align-items: center; gap: 8px;">
+            <span style="font-size: 11px; font-weight: 600; color: var(--mac-text-secondary); text-transform: uppercase;">
+              Descuento / Promoción para esta opción
+            </span>
+            ${op.descuento_id ? `<span class="badge" style="background:#EFF6FF; color:#1D4ED8; font-size:10px; padding:1px 6px; font-weight:600; border:1px solid #BFDBFE;">Aplicado ${op.descuento_visible === false ? '(Oculto)' : ''}</span>` : ''}
+          </div>
+          <div style="display: flex; align-items: center; gap: 8px;">
+            <select class="native-select" id="pres-select-descuento" style="font-size: 12px; min-width: 220px;" ${esPresupuestoBloqueado ? "disabled" : ""} onchange="onSelectDescuentoOpcion(this.value)">
+              <option value="">(Sin descuento)</option>
+              ${descuentosPresupuestoCache.map(d => {
+                const valStr = d.tipo === 'porcentaje' ? `${d.valor}%` : `${formatCurrency(d.valor)}`;
+                const ambito = d.aplica_a === 'productos' ? '🎯 Específico' : '🌐 Global';
+                const sel = (op.descuento_id == d.id) ? 'selected' : '';
+                return `<option value="${d.id}" ${sel}>${escapeHtml(d.nombre)} (${valStr} - ${ambito})</option>`;
+              }).join('')}
+            </select>
+          </div>
+        </div>
+
+        ${op.descuento_id ? `
+          <div style="display: flex; justify-content: space-between; align-items: center; border-top: 1px solid var(--mac-separator-subtle); padding-top: 8px; flex-wrap: wrap; gap: 8px;">
+            <div style="font-size: 11px; color: var(--mac-text-secondary);">
+              Visibilidad del descuento al cliente:
+            </div>
+            <div class="mac-segmented-control" role="group">
+              <button type="button" class="segment-btn ${op.descuento_visible !== false ? 'active' : ''}" ${esPresupuestoBloqueado ? "disabled" : ""} onclick="setDescuentoVisibleOpcion(true)" style="font-size: 11px; padding: 2px 8px;">
+                👁️ Visible
+              </button>
+              <button type="button" class="segment-btn ${op.descuento_visible === false ? 'active' : ''}" ${esPresupuestoBloqueado ? "disabled" : ""} onclick="setDescuentoVisibleOpcion(false)" style="font-size: 11px; padding: 2px 8px;">
+                🔒 Oculto (Neto)
+              </button>
+            </div>
+          </div>
+        ` : ''}
+      </div>
+
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 12px; flex-wrap: wrap; gap: 12px;">
+        ${esPresupuestoBloqueado ? "" : `<button type="button" class="btn btn-secondary btn-sm" onclick="agregarLineaAOpcion()">
+          ➕ Añadir producto a esta opción
+        </button>`}
+        <div style="display: flex; align-items: baseline; gap: 12px; font-size: 14px; font-weight: 700; color: var(--color-gray-900); background: #f8fafc; padding: 8px 16px; border-radius: 6px; border: 1px solid var(--color-gray-200);">
+          <span id="opcion-subtotal-container" style="display: ${tieneDto ? 'inline' : 'none'}; font-size: 12px; color: var(--mac-text-secondary); font-weight: normal;">
+            Subtotal: <strong id="opcion-subtotal-display">${formatCurrency(subtotalBrutoDisplay)}</strong>
+          </span>
+          <span id="opcion-descuento-container" style="display: ${tieneDto ? 'inline' : 'none'}; font-size: 12px; color: #2563EB; font-weight: normal;">
+            <span id="opcion-descuento-label">${esOculto ? 'Dto (oculto):' : 'Dto:'}</span> <strong id="opcion-descuento-display">-${formatCurrency(importeDto)}</strong>
+          </span>
+          <span>TOTAL Opción (sin IVA): <span id="opcion-total-display" style="color: var(--primary, #2962ff); font-size: 16px;">${formatCurrency(totalOp)}</span></span>
+        </div>
+      </div>
+    `;
+  }
+
+  function onProductoFocus(lIdx) {
+    const input = document.getElementById(`desc-input-${lIdx}`);
+    const q = input ? input.value.trim() : '';
+    renderProductoDropdown(lIdx, q);
+    if (input) {
+      setTimeout(() => {
+        input.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+      }, 60);
+    }
+  }
+
+  function onProductoInput(lIdx, val) {
+    if (!opcionesData[activeOpIndex] || !opcionesData[activeOpIndex].lineas[lIdx]) return;
+    opcionesData[activeOpIndex].lineas[lIdx].descripcion = val;
+    renderProductoDropdown(lIdx, val.trim());
+  }
+
+  function toggleCatalogoDropdown(e, lIdx) {
+    e.stopPropagation();
+    const drop = document.getElementById(`ac-pres-drop-${lIdx}`);
+    if (!drop) return;
+    if (drop.classList.contains('show')) {
+      drop.classList.remove('show');
+    } else {
+      document.querySelectorAll('.autocomplete-dropdown.show').forEach(el => el.classList.remove('show'));
+      renderProductoDropdown(lIdx, '', true);
+    }
+  }
+
+  function calcularPrecioSugeridoPresupuesto(prod, cantidad, varianteId = null) {
+    if (!prod) return 0.0;
+    let precio = (prod.precio_unitario_base !== undefined && prod.precio_unitario_base !== null) ? Number(prod.precio_unitario_base) : 0.0;
+
+    // 1. Tramos por volumen
+    if (prod.escalados && prod.escalados.length > 0 && cantidad > 0) {
+      const sorted = [...prod.escalados].sort((a, b) => Number(b.cantidad_minima || 0) - Number(a.cantidad_minima || 0));
+      for (const esc of sorted) {
+        const cMin = Number(esc.cantidad_minima || 0);
+        const cMax = esc.cantidad_maxima !== null && esc.cantidad_maxima !== undefined ? Number(esc.cantidad_maxima) : null;
+        if (cantidad >= cMin && (cMax === null || cantidad <= cMax)) {
+          precio = Number(esc.precio_unitario || 0);
+          break;
+        }
+      }
+    }
+
+    // 2. Variante seleccionada
+    if (varianteId && prod.variantes && prod.variantes.length > 0) {
+      const v = prod.variantes.find(x => x.id == varianteId);
+      if (v) {
+        if (v.precio_fijo !== null && v.precio_fijo !== undefined) {
+          precio = Number(v.precio_fijo);
+        } else if (v.precio_adicional) {
+          precio += Number(v.precio_adicional);
+        }
+      }
+    }
+
+    return Math.round(precio * 100) / 100;
+  }
+
+  function renderProductoDropdown(lIdx, q = '', forceShowAll = false) {
+    const drop = document.getElementById(`ac-pres-drop-${lIdx}`);
+    if (!drop) return;
+
+    const lowerQ = (q || '').toLowerCase();
+    let matches = [];
+    if (forceShowAll || !lowerQ) {
+      matches = catalogoProductos;
+    } else {
+      matches = catalogoProductos.filter(c =>
+        (c.nombre && c.nombre.toLowerCase().includes(lowerQ)) ||
+        (c.descripcion && c.descripcion.toLowerCase().includes(lowerQ)) ||
+        (c.codigo && c.codigo.toLowerCase().includes(lowerQ))
+      );
+    }
+
+    let html = '';
+
+    if (matches.length > 0) {
+      html += `<div style="padding: 6px 10px; font-size: 11px; font-weight: 700; color: var(--color-gray-500); background: #f8fafc; border-bottom: 1px solid var(--color-gray-200);">
+        PRODUCTOS EN BASE DE DATOS (${matches.length})
+      </div>`;
+
+      matches.slice(0, 15).forEach(c => {
+        const tieneEscalados = c.escalados && c.escalados.length > 0;
+        const escBadge = tieneEscalados ? `<span style="background: #ECFDF5; color: #065F46; padding: 1px 4px; border-radius: 3px; font-size: 10px; margin-left: 4px;">${c.escalados.length} tramos volumen</span>` : '';
+        html += `
+          <div class="autocomplete-item" onclick="seleccionarProductoEnPresupuesto(${lIdx}, ${c.id})">
+            <div class="item-name">${escapeHtml(c.nombre || c.descripcion)} ${escBadge}</div>
+            <div class="item-sub">
+              ${c.nombre && c.descripcion ? `<span style="color: #475569;">${escapeHtml(c.descripcion)}</span> · ` : ''}
+              
+              <strong>${formatCurrency(c.precio_unitario_base)}</strong>
+              <span style="color: var(--color-gray-500);">(IVA ${c.porcentaje_iva}%)</span>
+            </div>
+          </div>
+        `;
+        if (c.variantes && c.variantes.length > 0) {
+          c.variantes.forEach(v => {
+            const extra = v.precio_adicional > 0 ? ` (+${formatCurrency(v.precio_adicional)})` : (v.precio_fijo !== null && v.precio_fijo !== undefined ? ` (${formatCurrency(v.precio_fijo)})` : '');
+            const colorDot = v.color_hex ? `<span style="display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: ${v.color_hex}; border: 1px solid rgba(0,0,0,0.2); vertical-align: middle; margin-right: 4px;"></span>` : '';
+            html += `
+              <div class="autocomplete-item" style="padding-left: 24px; background: #FAFAFB; border-left: 3px solid var(--mac-accent);" onclick="seleccionarProductoEnPresupuesto(${lIdx}, ${c.id}, ${v.id})">
+                <div class="item-name" style="font-size: 12px; color: var(--mac-text-primary);">
+                  ${colorDot}↳ <span style="color: var(--mac-text-secondary);">${escapeHtml(v.tipo_atributo)}:</span> <strong>${escapeHtml(v.valor)}</strong> ${extra}
+                </div>
+              </div>
+            `;
+          });
+        }
+      });
+    }
+
+    if (q) {
+      html += `
+        <div class="autocomplete-item" style="border-top: 1px dashed #cbd5e1; background: #fffdf5;" onclick="usarComoNuevoProducto(${lIdx})">
+          <div class="item-name" style="color: #b45309; font-weight: 600;">
+            Usar «${escapeHtml(q)}» como producto nuevo
+          </div>
+          <div class="item-sub" style="color: #92400e;">
+            Producto libre personalizado para este presupuesto
+          </div>
+        </div>
+      `;
+
+      const exactMatch = catalogoProductos.some(c => ((c.nombre || '').toLowerCase() === lowerQ) || ((c.descripcion || '').toLowerCase() === lowerQ));
+      if (!exactMatch) {
+        html += `
+          <div style="padding: 8px 10px; background: #f0fdf4; border-top: 1px solid #bbf7d0; text-align: center;">
+            <button type="button" class="btn btn-sm btn-outline" style="font-size: 11px; padding: 4px 8px; width: 100%; border-color: #16a34a; color: #15803d;" onclick="guardarNuevoProductoEnBD(event, ${lIdx})">
+              Guardar «${escapeHtml(q)}» en catálogo
+            </button>
+          </div>
+        `;
+      }
+    } else if (matches.length === 0) {
+      html += `
+        <div style="padding: 14px; text-align: center; color: var(--color-gray-500); font-size: 12px;">
+          No hay productos guardados aún en la base de datos.<br>
+          <span style="font-size: 11px;">Puedes escribir cualquier producto nuevo directamente.</span>
+        </div>
+      `;
+    }
+
+    drop.innerHTML = html;
+    drop.classList.add('show');
+
+    // Posicionamiento inteligente: si no cabe abajo de la pantalla, abrir hacia arriba
+    const inputEl = document.getElementById(`desc-input-${lIdx}`);
+    if (inputEl) {
+      const rect = inputEl.getBoundingClientRect();
+      const spaceBelow = window.innerHeight - rect.bottom;
+      if (spaceBelow < 280 && rect.top > 240) {
+        drop.style.top = 'auto';
+        drop.style.bottom = 'calc(100% + 4px)';
+        drop.style.boxShadow = '0 -8px 24px rgba(0, 0, 0, 0.16)';
+      } else {
+        drop.style.top = 'calc(100% + 4px)';
+        drop.style.bottom = 'auto';
+        drop.style.boxShadow = 'var(--shadow-lg)';
+      }
+    }
+  }
+
+  function seleccionarProductoEnPresupuesto(lIdx, ProductoId, varianteId = null) {
+    const c = catalogoProductos.find(x => x.id == ProductoId);
+    if (!c || !opcionesData[activeOpIndex] || !opcionesData[activeOpIndex].lineas[lIdx]) return;
+
+    const l = opcionesData[activeOpIndex].lineas[lIdx];
+    const tieneNombre = Boolean(c.nombre && c.nombre.trim());
+    const tieneDesc = Boolean(c.descripcion && c.descripcion.trim());
+
+    let nombreFinal = '';
+    let detalleFinal = '';
+
+    if (tieneNombre && tieneDesc) {
+      nombreFinal = c.nombre.trim();
+      detalleFinal = (c.nombre.trim() === c.descripcion.trim()) ? '' : c.descripcion.trim();
+    } else if (tieneNombre) {
+      nombreFinal = c.nombre.trim();
+      detalleFinal = '';
+    } else if (tieneDesc) {
+      nombreFinal = c.descripcion.trim();
+      detalleFinal = '';
+    }
+
+    l.producto_id = c.id;
+    l.variante_id = varianteId;
+
+    if (varianteId && c.variantes && c.variantes.length > 0) {
+      const v = c.variantes.find(x => x.id == varianteId);
+      if (v) {
+        const extraVar = `${v.tipo_atributo}: ${v.valor}`;
+        detalleFinal = detalleFinal ? `${extraVar} · ${detalleFinal}` : extraVar;
+      }
+    }
+
+    const cantActual = l.cantidad || 100;
+    const precioSugerido = calcularPrecioSugeridoPresupuesto(c, cantActual, varianteId);
+
+    l.descripcion = nombreFinal;
+    l.detalle_material = detalleFinal;
+    l.precio_unitario = precioSugerido;
+
+    const descInput = document.getElementById(`desc-input-${lIdx}`);
+    if (descInput) descInput.value = nombreFinal;
+
+    const matInput = document.getElementById(`mat-input-${lIdx}`);
+    if (matInput) matInput.value = detalleFinal;
+
+    const precioInput = document.getElementById(`precio-input-${lIdx}`);
+    if (precioInput) precioInput.value = l.precio_unitario.toFixed(2);
+
+    const sub = (l.cantidad || 0) * (l.precio_unitario || 0);
+    const subCell = document.getElementById(`subtotal-cell-${lIdx}`);
+    if (subCell) subCell.textContent = formatCurrency(sub);
+
+    actualizarTotalesFooterOpcion(opcionesData[activeOpIndex]);
+
+    const drop = document.getElementById(`ac-pres-drop-${lIdx}`);
+    if (drop) drop.classList.remove('show');
+
+    showToast(`Autorellenado: ${nombreFinal} (${formatCurrency(l.precio_unitario)})`, 'success');
+  }
+
+  function usarComoNuevoProducto(lIdx, nombre) {
+    if (!opcionesData[activeOpIndex] || !opcionesData[activeOpIndex].lineas[lIdx]) return;
+    if (nombre === undefined) {
+      const descInput = document.getElementById(`desc-input-${lIdx}`);
+      nombre = descInput ? descInput.value.trim() : '';
+    }
+    opcionesData[activeOpIndex].lineas[lIdx].descripcion = nombre;
+    opcionesData[activeOpIndex].lineas[lIdx].detalle_material = '';
+    opcionesData[activeOpIndex].lineas[lIdx].producto_id = null;
+    opcionesData[activeOpIndex].lineas[lIdx].variante_id = null;
+
+    const descInput = document.getElementById(`desc-input-${lIdx}`);
+    if (descInput) descInput.value = nombre;
+
+    const matInput = document.getElementById(`mat-input-${lIdx}`);
+    if (matInput) matInput.value = '';
+
+    const drop = document.getElementById(`ac-pres-drop-${lIdx}`);
+    if (drop) drop.classList.remove('show');
+  }
+
+  async function guardarNuevoProductoEnBD(e, lIdx, nombre) {
+    e.stopPropagation();
+    if (nombre === undefined) {
+      const descInput = document.getElementById(`desc-input-${lIdx}`);
+      nombre = descInput ? descInput.value.trim() : '';
+    }
+    const l = opcionesData[activeOpIndex]?.lineas[lIdx];
+    const precio = l ? (l.precio_unitario || 0.0) : 0.0;
+    const detalle = l ? (l.detalle_material || '') : '';
+
+    try {
+      const res = await fetch('/api/productos', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          nombre: nombre,
+          descripcion: detalle || nombre,
+          precio_unitario_base: precio,
+          porcentaje_iva: 21.0,
+          aplica_irpf: false
+        })
+      });
+
+      if (!res.ok) {
+        const errData = await res.json();
+        throw new Error(errData.detail || 'Error al guardar en catálogo');
+      }
+
+      const nuevoProducto = await res.json();
+      catalogoProductos.push(nuevoProducto);
+      showToast(`¡Producto "${nombre}" guardado en la base de datos!`, 'success');
+      seleccionarProductoEnPresupuesto(lIdx, nuevoProducto.id);
+      if (typeof window.actualizarContadoresSidebar === 'function') {
+        window.actualizarContadoresSidebar();
+      }
+    } catch(err) {
+      showToast(err.message, 'warning');
+    }
+  }
+
+  // Cerrar dropdowns de productos al hacer clic fuera o con Escape
+  document.addEventListener('click', (e) => {
+    if (!e.target.closest('.autocomplete-wrapper')) {
+      document.querySelectorAll('.autocomplete-dropdown.show').forEach(el => el.classList.remove('show'));
+    }
+  });
+
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') {
+      document.querySelectorAll('.autocomplete-dropdown.show').forEach(el => el.classList.remove('show'));
+    }
+  });
+
+  function actualizarNombreOpcion(val) {
+    if (!opcionesData[activeOpIndex]) return;
+    opcionesData[activeOpIndex].nombre_opcion = val;
+    const tabTitle = document.getElementById(`tab-title-${activeOpIndex}`);
+    if (tabTitle) tabTitle.textContent = val || `Opción ${activeOpIndex + 1}`;
+  }
+
+  function actualizarLinea(lIdx, campo, val) {
+    if (!opcionesData[activeOpIndex] || !opcionesData[activeOpIndex].lineas[lIdx]) return;
+    opcionesData[activeOpIndex].lineas[lIdx][campo] = val;
+
+    if (campo === 'cantidad') {
+      const prodId = opcionesData[activeOpIndex].lineas[lIdx].producto_id;
+      if (prodId) {
+        const prod = catalogoProductos.find(p => p.id == prodId);
+        if (prod && prod.escalados && prod.escalados.length > 0) {
+          const varId = opcionesData[activeOpIndex].lineas[lIdx].variante_id || null;
+          const nuevoPrecio = calcularPrecioSugeridoPresupuesto(prod, val, varId);
+          if (nuevoPrecio !== undefined && nuevoPrecio !== opcionesData[activeOpIndex].lineas[lIdx].precio_unitario) {
+            opcionesData[activeOpIndex].lineas[lIdx].precio_unitario = nuevoPrecio;
+            const precioInput = document.getElementById(`precio-input-${lIdx}`);
+            if (precioInput) precioInput.value = nuevoPrecio.toFixed(2);
+            if (window.Toast) {
+              Toast.info('Tarifa por volumen', `Aplicado escalado: ${formatCurrency(nuevoPrecio)}/ud para ${val} uds.`);
+            } else if (typeof showToast === 'function') {
+              showToast(`Aplicado escalado: ${formatCurrency(nuevoPrecio)}/ud para ${val} uds.`, 'info');
+            }
+          }
+        }
+      }
+    }
+
+    if (campo === 'cantidad' || campo === 'precio_unitario') {
+      const l = opcionesData[activeOpIndex].lineas[lIdx];
+      const sub = (l.cantidad || 0) * (l.precio_unitario || 0);
+      const subCell = document.getElementById(`subtotal-cell-${lIdx}`);
+      if (subCell) subCell.textContent = formatCurrency(sub);
+
+      actualizarTotalesFooterOpcion(opcionesData[activeOpIndex]);
+    }
+  }
+
+  function agregarLineaAOpcion() {
+    if (esPresupuestoBloqueado) return;
+    opcionesData[activeOpIndex].lineas.push({
+      descripcion: '',
+      detalle_material: '',
+      cantidad: 100,
+      precio_unitario: 0.0
+    });
+    renderActiveOpcion();
+  }
+
+  function eliminarLinea(lIdx) {
+    if (esPresupuestoBloqueado) return;
+    if (opcionesData[activeOpIndex].lineas.length <= 1) {
+      showToast('Cada opción debe tener al menos un producto.', 'warning');
+      return;
+    }
+    opcionesData[activeOpIndex].lineas.splice(lIdx, 1);
+    renderTabs();
+    renderActiveOpcion();
+  }
+
+  function onSelectDescuentoOpcion(descId) {
+    if (!opcionesData[activeOpIndex]) return;
+    const op = opcionesData[activeOpIndex];
+    if (!descId) {
+      (op.lineas || []).forEach(l => {
+        if (l.precio_unitario_original !== undefined && l.precio_unitario_original !== null) {
+          l.precio_unitario = l.precio_unitario_original;
+          l.precio_unitario_original = null;
+        }
+      });
+      op.descuento_id = null;
+      op.descuento_nombre = null;
+      op.descuento_tipo = null;
+      op.descuento_valor = 0.0;
+      op.descuento_importe_total = 0.0;
+      op.descuento_visible = true;
+    } else {
+      const d = descuentosPresupuestoCache.find(x => x.id == descId);
+      if (d) {
+        op.descuento_id = d.id;
+        op.descuento_nombre = d.nombre;
+        op.descuento_tipo = d.tipo;
+        op.descuento_valor = d.valor;
+        if (op.descuento_visible === undefined) op.descuento_visible = true;
+        aplicarDescuentoOpcion(op);
+      }
+    }
+    renderTabs();
+    renderActiveOpcion();
+  }
+
+  function setDescuentoVisibleOpcion(visible) {
+    if (!opcionesData[activeOpIndex]) return;
+    const op = opcionesData[activeOpIndex];
+    op.descuento_visible = Boolean(visible);
+    aplicarDescuentoOpcion(op);
+    renderTabs();
+    renderActiveOpcion();
+  }
+
+  function aplicarDescuentoOpcion(op) {
+    if (!op || !op.descuento_id) return;
+    const d = descuentosPresupuestoCache.find(x => x.id == op.descuento_id);
+    if (!d) return;
+
+    if (!op.descuento_visible) {
+      (op.lineas || []).forEach(l => {
+        const aplica = (d.aplica_a === 'todos') || (d.aplica_a === 'productos' && l.producto_id && d.producto_ids && d.producto_ids.includes(l.producto_id));
+        if (aplica) {
+          if (l.precio_unitario_original === undefined || l.precio_unitario_original === null) {
+            l.precio_unitario_original = l.precio_unitario;
+          }
+          if (d.tipo === 'porcentaje') {
+            l.precio_unitario = Math.round(l.precio_unitario_original * (1 - d.valor / 100) * 100) / 100;
+          } else if (d.tipo === 'fijo') {
+            const cant = l.cantidad || 1;
+            l.precio_unitario = Math.max(0, Math.round((l.precio_unitario_original - (d.valor / cant)) * 100) / 100);
+          }
+        } else {
+          if (l.precio_unitario_original !== undefined && l.precio_unitario_original !== null) {
+            l.precio_unitario = l.precio_unitario_original;
+            l.precio_unitario_original = null;
+          }
+        }
+      });
+    } else {
+      (op.lineas || []).forEach(l => {
+        if (l.precio_unitario_original !== undefined && l.precio_unitario_original !== null) {
+          l.precio_unitario = l.precio_unitario_original;
+        }
+      });
+    }
+  }
+
+  function calcularTotalOpcion(op) {
+    if (!op) return 0;
+    const d = op.descuento_id ? descuentosPresupuestoCache.find(x => x.id == op.descuento_id) : null;
+    let subtotalBruto = 0;
+    let subtotalAplicable = 0;
+    let subtotalOriginal = 0;
+
+    (op.lineas || []).forEach(l => {
+      const totLinea = (l.cantidad || 0) * (l.precio_unitario || 0);
+      subtotalBruto += totLinea;
+      const precioOrig = (l.precio_unitario_original !== undefined && l.precio_unitario_original !== null)
+        ? l.precio_unitario_original
+        : (l.precio_unitario || 0);
+      subtotalOriginal += (l.cantidad || 0) * precioOrig;
+      if (d) {
+        const aplica = (d.aplica_a === 'todos') || (d.aplica_a === 'productos' && l.producto_id && d.producto_ids && d.producto_ids.includes(l.producto_id));
+        if (aplica) subtotalAplicable += totLinea;
+      }
+    });
+
+    if (d) {
+      if (op.descuento_visible !== false) {
+        let importeDto = 0;
+        if (d.tipo === 'porcentaje') {
+          importeDto = Math.round(subtotalAplicable * (d.valor / 100) * 100) / 100;
+        } else if (d.tipo === 'fijo') {
+          importeDto = Math.min(subtotalAplicable, d.valor);
+        }
+        op.descuento_importe_total = importeDto;
+        return Math.max(0, Math.round((subtotalBruto - importeDto) * 100) / 100);
+      } else {
+        const importeDtoOculto = Math.max(0, Math.round((subtotalOriginal - subtotalBruto) * 100) / 100);
+        op.descuento_importe_total = importeDtoOculto;
+        return Math.round(subtotalBruto * 100) / 100;
+      }
+    } else {
+      op.descuento_importe_total = 0;
+      return Math.round(subtotalBruto * 100) / 100;
+    }
+  }
+
+  function actualizarTotalesFooterOpcion(op) {
+    if (!op) return;
+    const totalOp = calcularTotalOpcion(op);
+    const subtotalOriginal = (op.lineas || []).reduce((acc, l) => {
+      const pOrig = (l.precio_unitario_original !== undefined && l.precio_unitario_original !== null)
+        ? l.precio_unitario_original
+        : (l.precio_unitario || 0);
+      return acc + (l.cantidad || 0) * pOrig;
+    }, 0);
+    const subtotalBrutoDisplay = op.descuento_visible !== false
+      ? (totalOp + (op.descuento_importe_total || 0))
+      : Math.round(subtotalOriginal * 100) / 100;
+    const importeDto = op.descuento_importe_total || 0;
+    const tieneDto = Boolean(op.descuento_id && importeDto > 0);
+    const esOculto = op.descuento_visible === false;
+
+    const contSub = document.getElementById('opcion-subtotal-container');
+    const contDto = document.getElementById('opcion-descuento-container');
+    const dispSub = document.getElementById('opcion-subtotal-display');
+    const dispDto = document.getElementById('opcion-descuento-display');
+    const lblDto = document.getElementById('opcion-descuento-label');
+    const totDisplay = document.getElementById('opcion-total-display');
+
+    if (totDisplay) totDisplay.textContent = formatCurrency(totalOp);
+
+    if (tieneDto) {
+      if (contSub) contSub.style.display = 'inline';
+      if (contDto) contDto.style.display = 'inline';
+      if (dispSub) dispSub.textContent = formatCurrency(subtotalBrutoDisplay);
+      if (lblDto) lblDto.textContent = esOculto ? 'Dto (oculto):' : 'Dto:';
+      if (dispDto) dispDto.textContent = `-${formatCurrency(importeDto)}`;
+    } else {
+      if (contSub) contSub.style.display = 'none';
+      if (contDto) contDto.style.display = 'none';
+    }
+
+    const tabBadge = document.getElementById(`tab-badge-${activeOpIndex}`);
+    if (tabBadge) tabBadge.textContent = formatCurrency(totalOp);
+  }
+
+  async function guardarPresupuesto() {
+    if (esPresupuestoBloqueado) {
+      if (window.Toast) Toast.error("Presupuesto bloqueado", "Para guardar cambios, debe volver primero a estado Borrador con el botón superior.");
+      else alert("Este presupuesto está bloqueado. Debe volver a Borrador para guardar cambios.");
+      return;
+    }
+    const errorContainer = document.getElementById('presupuesto-errors');
+    errorContainer.style.display = 'none';
+    errorContainer.innerHTML = '';
+
+    function mostrarAvisoValidacion(msg, titulo = 'Atención') {
+      if (window.Toast) {
+        Toast.warning(titulo, msg);
+      } else if (typeof showToast === 'function') {
+        showToast(msg, 'warning');
+      }
+      errorContainer.innerHTML = msg;
+      errorContainer.style.display = 'block';
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+
+    const clienteId = parseInt(document.getElementById('pres-cliente-id').value);
+    if (!clienteId) {
+      mostrarAvisoValidacion('Debes seleccionar o crear un cliente para el presupuesto.', 'Cliente requerido');
+      return;
+    }
+
+    const numero = document.getElementById('pres-numero').value.trim();
+    if (!numero) {
+      mostrarAvisoValidacion('El identificador del presupuesto es obligatorio.', 'Identificador requerido');
+      return;
+    }
+
+    // Validar que cada opción tenga nombre y al menos una línea válida con cantidad positiva
+    for (let i = 0; i < opcionesData.length; i++) {
+      const op = opcionesData[i];
+      if (!op.nombre_opcion.trim()) {
+        mostrarAvisoValidacion(`La Opción ${i+1} debe tener un nombre.`, 'Opción sin nombre');
+        return;
+      }
+      for (let j = 0; j < op.lineas.length; j++) {
+        const l = op.lineas[j];
+        if (!l.descripcion.trim()) {
+          mostrarAvisoValidacion(`En la "${op.nombre_opcion}", el producto #${j+1} no tiene descripción.`, 'Descripción requerida');
+          return;
+        }
+        if (!l.cantidad || l.cantidad <= 0) {
+          mostrarAvisoValidacion(`En la "${op.nombre_opcion}", el producto #${j+1} debe tener una cantidad mayor que 0.`, 'Cantidad inválida');
+          return;
+        }
+      }
+    }
+
+    const presTituloInput = document.getElementById('pres-titulo');
+    const presSubtituloInput = document.getElementById('pres-subtitulo');
+    const presFechaInput = document.getElementById('pres-fecha');
+    const presFechaValidezInput = document.getElementById('pres-fecha-validez');
+    const presEstadoInput = document.getElementById('pres-estado');
+
+    const payload = {
+      numero_presupuesto: numero,
+      cliente_id: clienteId,
+      fecha: presFechaInput.value || new Date().toISOString().split('T')[0],
+      fecha_validez: presFechaValidezInput.value || null,
+      titulo: (presTituloInput && presTituloInput.value.trim()) ? presTituloInput.value.trim() : 'Presupuesto para invitaciones',
+      subtitulo: (presSubtituloInput && presSubtituloInput.value.trim()) ? presSubtituloInput.value.trim() : 'Precios para el diseño de invitaciones de boda',
+      estado: presEstadoInput ? presEstadoInput.value : 'Borrador',
+      opciones: opcionesData.map((op, idx) => ({
+        nombre_opcion: op.nombre_opcion.trim(),
+        orden: idx + 1,
+        descuento_id: op.descuento_id || null,
+        descuento_nombre: op.descuento_nombre || null,
+        descuento_tipo: op.descuento_tipo || null,
+        descuento_valor: op.descuento_valor || 0.0,
+        descuento_importe_total: op.descuento_importe_total || 0.0,
+        descuento_visible: op.descuento_visible !== undefined ? op.descuento_visible : true,
+        lineas: op.lineas.map((l, lIdx) => ({
+          descripcion: l.descripcion.trim(),
+          detalle_material: l.detalle_material ? l.detalle_material.trim() : null,
+          cantidad: l.cantidad,
+          precio_unitario: l.precio_unitario,
+          orden: lIdx + 1,
+          producto_id: l.producto_id || null,
+          descuento_id: l.descuento_id || null,
+          precio_unitario_original: l.precio_unitario_original || null
+        }))
+      }))
+    };
+
+    const btn = document.getElementById('btn-guardar-presupuesto');
+    btn.disabled = true;
+    btn.innerText = 'Guardando...';
+
+    try {
+      if (EDITING_ID) {
+        await apiFetch(`/api/presupuestos/${EDITING_ID}`, {
+          method: 'PUT',
+          body: payload
+        });
+      } else {
+        await apiFetch('/api/presupuestos', {
+          method: 'POST',
+          body: payload
+        });
+      }
+
+      showToast('¡Presupuesto guardado correctamente!', 'success');
+      setTimeout(() => {
+        window.location.href = '/presupuestos';
+      }, 500);
+
+    } catch (err) {
+      const msg = err.message || (err.data && err.data.detail) || 'Error al guardar el presupuesto.';
+      if (window.Toast) {
+        Toast.error('Error al guardar', msg);
+      } else if (typeof showToast === 'function') {
+        showToast(msg, 'danger');
+      }
+      errorContainer.innerHTML = msg;
+      errorContainer.style.display = 'block';
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    } finally {
+      btn.disabled = false;
+      btn.innerText = 'Guardar Presupuesto';
+    }
+  }
+
+  async function previsualizarPresupuestoPDF() {
+    const btn = document.getElementById('btn-preview-presupuesto');
+    const oldText = btn ? btn.innerText : 'Vista Previa PDF';
+    if (btn) {
+      btn.disabled = true;
+      btn.innerText = 'Generando vista previa...';
+    }
+
+    // Abrimos ventana antes del fetch para evitar bloqueo por navegador
+    const win = window.open('about:blank', '_blank');
+    if (win) {
+      win.document.write(`
+        <!DOCTYPE html>
+        <html><head><title>Generando Vista Previa PDF...</title></head>
+        <body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; display: flex; align-items: center; justify-content: center; height: 90vh; margin: 0; color: #475569; background: #f8fafc;">
+          <div style="text-align: center;">
+            <div style="font-size: 16px; font-weight: 600; margin-bottom: 8px;">Generando vista previa del presupuesto...</div>
+            <div style="font-size: 13px; color: #64748b;">Mostrando los cambios en tiempo real sin necesidad de guardar.</div>
+          </div>
+        </body></html>
+      `);
+    }
+
+    try {
+      const clienteIdVal = parseInt(document.getElementById('pres-cliente-id')?.value) || null;
+      const clienteSearchVal = document.getElementById('pres-cliente-search')?.value?.trim() || '';
+      const numeroVal = document.getElementById('pres-numero')?.value?.trim() || 'BORRADOR';
+      const presTituloInput = document.getElementById('pres-titulo');
+      const presSubtituloInput = document.getElementById('pres-subtitulo');
+      const presFechaInput = document.getElementById('pres-fecha');
+      const presFechaValidezInput = document.getElementById('pres-fecha-validez');
+
+      const payload = {
+        numero_presupuesto: numeroVal,
+        cliente_id: clienteIdVal,
+        cliente_nombre: clienteSearchVal,
+        fecha: presFechaInput?.value || new Date().toISOString().split('T')[0],
+        fecha_validez: presFechaValidezInput?.value || null,
+        titulo: (presTituloInput && presTituloInput.value.trim()) ? presTituloInput.value.trim() : 'Presupuesto de Servicios',
+        subtitulo: (presSubtituloInput && presSubtituloInput.value.trim()) ? presSubtituloInput.value.trim() : 'Precios para el diseño de invitaciones de boda',
+        opciones: opcionesData.map((op, idx) => ({
+          nombre_opcion: (op.nombre_opcion || '').trim() || `Opción ${idx + 1}`,
+          orden: idx + 1,
+          descuento_id: op.descuento_id || null,
+          descuento_nombre: op.descuento_nombre || null,
+          descuento_tipo: op.descuento_tipo || null,
+          descuento_valor: op.descuento_valor || 0.0,
+          descuento_importe_total: op.descuento_importe_total || 0.0,
+          descuento_visible: op.descuento_visible !== undefined ? op.descuento_visible : true,
+          lineas: (op.lineas || []).map((l, lIdx) => ({
+            descripcion: (l.descripcion || '').trim() || `Producto ${lIdx + 1}`,
+            detalle_material: l.detalle_material ? l.detalle_material.trim() : '',
+            cantidad: Number(l.cantidad) || 1,
+            precio_unitario: Number(l.precio_unitario) || 0,
+            orden: lIdx + 1,
+            producto_id: l.producto_id || null,
+            descuento_id: l.descuento_id || null,
+            precio_unitario_original: l.precio_unitario_original || null
+          }))
+        }))
+      };
+
+      const res = await fetch('/api/presupuestos/preview-pdf', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        if (win) win.close();
+        if (typeof showToast === 'function') {
+          showToast(err.detail || 'Error al generar la vista previa', 'danger');
+        }
+        return;
+      }
+
+      const blob = await res.blob();
+      const blobUrl = URL.createObjectURL(blob);
+      if (win) {
+        win.location.href = blobUrl;
+      } else {
+        window.open(blobUrl, '_blank');
+      }
+    } catch (err) {
+      console.error(err);
+      if (win) win.close();
+      if (typeof showToast === 'function') {
+        showToast('Error de conexión al generar la vista previa del PDF', 'danger');
+      }
+    } finally {
+      if (btn) {
+        btn.disabled = false;
+        btn.innerText = oldText;
+      }
+    }
+  }
+
+  // Soporte para quick-cliente modal en nuevo presupuesto
+  window.seleccionarClienteEnFactura = function(cliente) {
+    seleccionarCliente(cliente);
+  };
+
+  function formatCurrency(num) {
+    return (num || 0).toLocaleString('es-ES', { style: 'currency', currency: 'EUR' });
+  }
+
+  function escapeHtml(text) {
+    if (!text) return '';
+    return text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+  }
+</script>
+{% endblock %}

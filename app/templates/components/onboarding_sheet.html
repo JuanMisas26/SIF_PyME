@@ -1,0 +1,283 @@
+<!-- Asistente de Primera Apertura estilo macOS Sheet (NSWindow Sheet Modal) -->
+<div class="modal-overlay" id="onboarding-sheet-overlay" style="z-index: 10500; display: none; align-items: flex-start; padding-top: 40px;">
+  <div class="modal" id="onboarding-sheet-modal" style="max-width: 620px; width: 100%; border-radius: 12px; box-shadow: 0 30px 80px rgba(0,0,0,0.35); border: 1px solid rgba(0,0,0,0.18); overflow: hidden; background: #FFFFFF; padding: 0; animation: sheetSlideDown 0.25s cubic-bezier(0.16, 1, 0.3, 1);">
+    
+    <!-- Encabezado con Indicador de Pasos (Segmented Dots Apple HIG) -->
+    <div style="background: #F8F8F9; border-bottom: 1px solid var(--mac-separator); padding: 16px 24px; display: flex; align-items: center; justify-content: space-between;">
+      <div style="display: flex; align-items: center; gap: 10px;">
+        <span style="display: inline-block; width: 10px; height: 10px; border-radius: 50%; background: var(--mac-accent);"></span>
+        <span style="font-size: 13px; font-weight: 700; color: var(--mac-text-primary); letter-spacing: -0.01em;">
+          Asistente de Configuración Inicial
+        </span>
+      </div>
+      <!-- Indicadores de paso -->
+      <div style="display: flex; gap: 6px; align-items: center;">
+        <span id="onboard-indicator-1" class="onboard-dot active"></span>
+        <span id="onboard-indicator-2" class="onboard-dot"></span>
+        <span id="onboard-indicator-3" class="onboard-dot"></span>
+        <span id="onboard-indicator-4" class="onboard-dot"></span>
+      </div>
+    </div>
+
+    <!-- Mensaje de error general -->
+    <div id="onboard-error-msg" style="display: none; background: #FEE2E2; color: #991B1B; padding: 10px 24px; font-size: 12px; border-bottom: 1px solid #FCA5A5; font-weight: 500;">
+    </div>
+
+    <!-- ======================================================== -->
+    <!-- PASO 1: Bienvenida -->
+    <!-- ======================================================== -->
+    <div id="onboard-step-1" class="onboard-step-content" style="padding: 32px 36px 24px 36px; text-align: center;">
+      <div style="width: 72px; height: 72px; margin: 0 auto 16px auto; background: #F2F4F7; border-radius: 18px; display: flex; align-items: center; justify-content: center; box-shadow: inset 0 1px 3px rgba(0,0,0,0.06), 0 4px 12px rgba(0,0,0,0.08);">
+        <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="var(--mac-accent)" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+          <rect x="2" y="3" width="20" height="14" rx="2" ry="2"></rect>
+          <line x1="8" y1="21" x2="16" y2="21"></line>
+          <line x1="12" y1="17" x2="12" y2="21"></line>
+        </svg>
+      </div>
+
+      <h2 style="font-size: 20px; font-weight: 700; color: var(--mac-text-primary); margin: 0 0 8px 0; letter-spacing: -0.02em;">
+        Bienvenido a SIF PyME
+      </h2>
+      <p style="font-size: 13px; color: var(--mac-text-secondary); line-height: 1.55; margin: 0 auto 24px auto; max-width: 460px;">
+        Software de facturación y presupuestos diseñado específicamente para macOS. Todos tus datos y documentos se gestionan localmente en tu equipo sin dependencias externas.
+      </p>
+
+      <div style="background: #F8F9FA; border: 1px solid var(--mac-separator-subtle); border-radius: 8px; padding: 14px 18px; text-align: left; margin-bottom: 24px; font-size: 12px; color: var(--mac-text-secondary); line-height: 1.6;">
+        <div style="display: flex; gap: 10px; margin-bottom: 8px; align-items: center;">
+          <span style="color: var(--mac-system-green); font-size: 14px;">✓</span>
+          <span><strong>100% Local y Privado:</strong> Sin suscripciones en la nube obligatorias.</span>
+        </div>
+        <div style="display: flex; gap: 10px; margin-bottom: 8px; align-items: center;">
+          <span style="color: var(--mac-system-green); font-size: 14px;">✓</span>
+          <span><strong>Normativa Española:</strong> Validación rigurosa de NIF/CIF, series y desglose de IVA/IRPF.</span>
+        </div>
+        <div style="display: flex; gap: 10px; align-items: center;">
+          <span style="color: var(--mac-system-green); font-size: 14px;">✓</span>
+          <span><strong>Diseño AppKit / HIG:</strong> Experiencia idéntica a las aplicaciones nativas de Apple.</span>
+        </div>
+      </div>
+
+      <div style="display: flex; justify-content: flex-end;">
+        <button type="button" class="btn-native btn-primary" style="height: 32px; padding: 0 20px; font-size: 13px;" onclick="OnboardingAssistant.next()">
+          Comenzar Configuración →
+        </button>
+      </div>
+    </div>
+
+    <!-- ======================================================== -->
+    <!-- PASO 2: Ubicación de Almacenamiento de Facturas -->
+    <!-- ======================================================== -->
+    <div id="onboard-step-2" class="onboard-step-content" style="display: none; padding: 28px 32px 24px 32px;">
+      <div style="margin-bottom: 18px;">
+        <h3 style="font-size: 16px; font-weight: 700; color: var(--mac-text-primary); margin: 0 0 6px 0;">
+          ¿Dónde quieres guardar tus facturas y presupuestos?
+        </h3>
+        <p style="font-size: 12px; color: var(--mac-text-secondary); margin: 0; line-height: 1.45;">
+          Los documentos PDF generados se organizarán automáticamente en subcarpetas por año y mes.
+        </p>
+      </div>
+
+      <!-- Tarjetas de selección estilo macOS -->
+      <div style="display: flex; flex-direction: column; gap: 10px; margin-bottom: 20px;">
+        
+        <!-- Opción 1: Carpeta Documentos Local -->
+        <label class="onboard-radio-card">
+          <input type="radio" name="onboard_storage_option" value="local" checked style="margin-top: 3px;">
+          <div style="flex: 1;">
+            <div style="font-size: 13px; font-weight: 600; color: var(--mac-text-primary);">
+              📁 Carpeta Documentos (Recomendado)
+            </div>
+            <div id="onboard-path-local-text" style="font-size: 11px; color: var(--mac-text-tertiary); font-family: monospace; margin-top: 3px; word-break: break-all;">
+              ~/Documents/Facturas/PDFs
+            </div>
+          </div>
+        </label>
+
+        <!-- Opción 2: iCloud Drive -->
+        <label class="onboard-radio-card" id="onboard-card-icloud" style="display: none;">
+          <input type="radio" name="onboard_storage_option" value="icloud" style="margin-top: 3px;">
+          <div style="flex: 1;">
+            <div style="font-size: 13px; font-weight: 600; color: var(--mac-text-primary); display: flex; align-items: center; gap: 6px;">
+              ☁️ iCloud Drive <span style="font-size: 10px; background: #E0F2FE; color: #0369A1; padding: 1px 6px; border-radius: 4px; font-weight: 500;">Sincronizado</span>
+            </div>
+            <div id="onboard-path-icloud-text" style="font-size: 11px; color: var(--mac-text-tertiary); font-family: monospace; margin-top: 3px; word-break: break-all;">
+              ~/Library/Mobile Documents/com~apple~CloudDocs/Facturas
+            </div>
+          </div>
+        </label>
+
+        <!-- Opción 3: Personalizada -->
+        <label class="onboard-radio-card">
+          <input type="radio" name="onboard_storage_option" value="custom" style="margin-top: 3px;">
+          <div style="flex: 1;">
+            <div style="font-size: 13px; font-weight: 600; color: var(--mac-text-primary);">
+              📂 Otra carpeta personalizada
+            </div>
+            <div style="font-size: 11px; color: var(--mac-text-secondary); margin-top: 3px;">
+              Elige una ruta específica de tu disco duro o unidad externa.
+            </div>
+          </div>
+        </label>
+
+        <!-- Input para ruta personalizada -->
+        <div id="onboard-custom-path-container" style="display: none; padding-left: 28px; margin-top: 4px;">
+          <input type="text" class="form-control font-mono" id="onboard-custom-path" placeholder="/Users/tu_usuario/Facturas" style="font-size: 12px; height: 32px;">
+        </div>
+      </div>
+
+      <div style="display: flex; justify-content: space-between; align-items: center; border-top: 1px solid var(--mac-separator-subtle); padding-top: 16px;">
+        <button type="button" class="btn-native" style="height: 30px; padding: 0 14px;" onclick="OnboardingAssistant.prev()">
+          ← Atrás
+        </button>
+        <button type="button" class="btn-native btn-primary" style="height: 30px; padding: 0 18px;" onclick="OnboardingAssistant.next()">
+          Continuar →
+        </button>
+      </div>
+    </div>
+
+    <!-- ======================================================== -->
+    <!-- PASO 3: Datos Fiscales del Emisor -->
+    <!-- ======================================================== -->
+    <div id="onboard-step-3" class="onboard-step-content" style="display: none; padding: 28px 32px 24px 32px;">
+      <div style="margin-bottom: 16px;">
+        <h3 style="font-size: 16px; font-weight: 700; color: var(--mac-text-primary); margin: 0 0 6px 0;">
+          Datos Fiscales del Emisor
+        </h3>
+        <p style="font-size: 12px; color: var(--mac-text-secondary); margin: 0; line-height: 1.45;">
+          Estos datos aparecerán en los encabezados y pies de página de tus facturas y presupuestos. Podrás modificarlos en cualquier momento desde Ajustes.
+        </p>
+      </div>
+
+      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 14px;">
+        <div style="grid-column: span 2;">
+          <label style="font-size: 11px; font-weight: 600; color: var(--mac-text-secondary); text-transform: uppercase;">Nombre o Razón Social *</label>
+          <input type="text" class="form-control" id="onboard-nombre" required placeholder="Estudio Creativo S.L. o Nombre Autónomo" style="height: 32px; font-size: 13px;">
+        </div>
+        <div>
+          <label style="font-size: 11px; font-weight: 600; color: var(--mac-text-secondary); text-transform: uppercase;">NIF / CIF *</label>
+          <input type="text" class="form-control font-mono" id="onboard-nif" required placeholder="B12345678" style="height: 32px; font-size: 13px; text-transform: uppercase;">
+        </div>
+        <div>
+          <label style="font-size: 11px; font-weight: 600; color: var(--mac-text-secondary); text-transform: uppercase;">Código Postal</label>
+          <input type="text" class="form-control" id="onboard-cp" placeholder="28001" style="height: 32px; font-size: 13px;">
+        </div>
+        <div>
+          <label style="font-size: 11px; font-weight: 600; color: var(--mac-text-secondary); text-transform: uppercase;">Ciudad</label>
+          <input type="text" class="form-control" id="onboard-ciudad" placeholder="Madrid" style="height: 32px; font-size: 13px;">
+        </div>
+        <div>
+          <label style="font-size: 11px; font-weight: 600; color: var(--mac-text-secondary); text-transform: uppercase;">Email Emisor</label>
+          <input type="email" class="form-control" id="onboard-email" placeholder="hola@miestudio.com" style="height: 32px; font-size: 13px;">
+        </div>
+        <div style="grid-column: span 2;">
+          <label style="font-size: 11px; font-weight: 600; color: var(--mac-text-secondary); text-transform: uppercase;">Dirección Fiscal</label>
+          <input type="text" class="form-control" id="onboard-direccion" placeholder="Calle Mayor, 10, 2ºA" style="height: 32px; font-size: 13px;">
+        </div>
+        <div style="grid-column: span 2;">
+          <label style="font-size: 11px; font-weight: 600; color: var(--mac-text-secondary); text-transform: uppercase;">IBAN de Cobro (Opcional)</label>
+          <input type="text" class="form-control font-mono" id="onboard-iban" placeholder="ES00 0000 0000 0000 0000 0000" style="height: 32px; font-size: 13px;">
+        </div>
+      </div>
+
+      <div style="display: flex; justify-content: space-between; align-items: center; border-top: 1px solid var(--mac-separator-subtle); padding-top: 16px;">
+        <button type="button" class="btn-native" style="height: 30px; padding: 0 14px;" onclick="OnboardingAssistant.prev()">
+          ← Atrás
+        </button>
+        <button type="button" class="btn-native btn-primary" style="height: 30px; padding: 0 18px;" onclick="OnboardingAssistant.next()">
+          Continuar →
+        </button>
+      </div>
+    </div>
+
+    <!-- ======================================================== -->
+    <!-- PASO 4: Accesibilidad y Confirmación -->
+    <!-- ======================================================== -->
+    <div id="onboard-step-4" class="onboard-step-content" style="display: none; padding: 28px 32px 24px 32px;">
+      <div style="margin-bottom: 20px; text-align: center;">
+        <div style="width: 52px; height: 52px; margin: 0 auto 12px auto; background: #ECFDF5; color: var(--mac-system-green); border-radius: 50%; display: flex; align-items: center; justify-content: center;">
+          <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+            <polyline points="20 6 9 17 4 12"></polyline>
+          </svg>
+        </div>
+        <h3 style="font-size: 17px; font-weight: 700; color: var(--mac-text-primary); margin: 0 0 4px 0;">
+          ¡Todo preparado para empezar!
+        </h3>
+        <p style="font-size: 12px; color: var(--mac-text-secondary); margin: 0;">
+          Solo queda un último detalle de acceso rápido a tu aplicación.
+        </p>
+      </div>
+
+      <div style="background: #F8F9FA; border: 1px solid var(--mac-separator); border-radius: 8px; padding: 16px; margin-bottom: 24px;">
+        <label style="display: flex; align-items: flex-start; gap: 12px; cursor: pointer;">
+          <input type="checkbox" id="onboard-crear-acceso" checked style="width: 16px; height: 16px; margin-top: 2px; accent-color: var(--mac-accent);">
+          <div>
+            <div style="font-size: 13px; font-weight: 600; color: var(--mac-text-primary);">
+              Crear acceso directo en el Escritorio (Alias de macOS)
+            </div>
+            <div style="font-size: 12px; color: var(--mac-text-secondary); margin-top: 3px; line-height: 1.45;">
+              Crea un acceso rápido en tu Escritorio para abrir la aplicación directamente sin tener que buscarla en la carpeta Aplicaciones.
+            </div>
+          </div>
+        </label>
+      </div>
+
+      <div style="display: flex; justify-content: space-between; align-items: center; border-top: 1px solid var(--mac-separator-subtle); padding-top: 16px;">
+        <button type="button" class="btn-native" style="height: 30px; padding: 0 14px;" onclick="OnboardingAssistant.prev()">
+          ← Atrás
+        </button>
+        <button type="button" class="btn-native btn-primary" id="btn-onboard-finalizar" style="height: 32px; padding: 0 22px; font-size: 13px; font-weight: 600;" onclick="OnboardingAssistant.finish()">
+          Comenzar a usar SIF PyME
+        </button>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<style>
+  #onboarding-sheet-overlay.active {
+    display: flex !important;
+  }
+  .onboard-dot {
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    background: #D1D5DB;
+    display: inline-block;
+    transition: all 0.2s ease;
+  }
+  .onboard-dot.active {
+    background: var(--mac-accent);
+    width: 18px;
+    border-radius: 4px;
+  }
+  .onboard-dot.completed {
+    background: var(--mac-system-green);
+  }
+  .onboard-radio-card {
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+    padding: 12px 14px;
+    border: 1px solid var(--mac-separator);
+    border-radius: 8px;
+    background: #FFFFFF;
+    cursor: pointer;
+    transition: border-color 0.15s ease, background-color 0.15s ease;
+  }
+  .onboard-radio-card:hover {
+    border-color: var(--mac-accent);
+    background: #F8FAFC;
+  }
+  @keyframes sheetSlideDown {
+    from {
+      opacity: 0;
+      transform: translateY(-16px) scale(0.98);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0) scale(1);
+    }
+  }
+</style>
+

@@ -1,0 +1,18 @@
+meta {
+  name: Actualizar Estado Factura
+  type: http
+  seq: 7
+}
+
+put {
+  url: {{baseUrl}}/api/facturas/1/estado
+  body: json
+  auth: none
+}
+
+body:json {
+  {
+    "estado": "Pagada"
+  }
+}
+
