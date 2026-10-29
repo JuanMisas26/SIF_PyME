@@ -25,7 +25,7 @@
    - [3.10. Paginación Integral y Navegación](#310-paginación-integral-y-navegación-de-grandes-volúmenes)
    - [3.11. Módulo de Descuentos Comerciales](#311-módulo-de-descuentos-comerciales-y-promociones)
    - [3.12. Asistente de Configuración Inicial (Onboarding)](#312-asistente-de-configuración-inicial-onboarding)
-   - [3.13. Series y Numeraciones Con/Sin IVA](#313-series-y-numeración-independiente-consin-iva)
+   - [3.13. Numeración Estructurada y Unificada Con/Sin IVA](#313-numeración-estructurada-y-unificada-consin-iva)
 4. [Casos Extremos, Límite y Complejos (Edge Cases)](#4-casos-extremos-límite-y-complejos-edge-cases)
 5. [Pruebas de Generación de Documentos PDF](#5-pruebas-de-generación-de-documentos-pdf)
 6. [Pruebas de Interfaz de Usuario (Apple HIG)](#6-pruebas-de-interfaz-de-usuario-apple-hig)
@@ -222,13 +222,13 @@ El presente plan define la metodología, escenarios, matrices y casos de prueba 
 
 ---
 
-### 3.13. Series y Numeración Independiente Con/Sin IVA
+### 3.13. Numeración Estructurada y Unificada Con/Sin IVA
 
 | ID | Método | Endpoint / Componente | Descripción del Escenario | Resultado Esperado |
 |---|---|---|---|---|
-| **SER-01** | `POST` | `/api/facturas` | Factura en Régimen General con IVA (21%). | Aplica `serie_defecto` (ej. `FAC-2026-001`) y guarda en carpeta `Facturas_Con_IVA`. |
-| **SER-02** | `POST` | `/api/facturas` | Factura Exenta Sin IVA (`sin_iva=true`). | Aplica `serie_sin_iva` (ej. `FS-2026-001`), cuota de IVA 0,00 € y guarda en `Facturas_Sin_IVA`. |
-| **SER-03** | `PUT` | `/api/facturas/{id}` | Modificar factura alternando entre Con IVA y Sin IVA. | Regenera PDF en la subcarpeta correspondiente y purga el PDF antiguo sin huérfanos. |
+| **SER-01** | `POST` | `/api/facturas` | Factura en Régimen General con IVA (21%). | Asigna formato `[Prefijo]-[AÑO]-[MES]-[DIA]-[ID]` (ej. `FAC-2026-10-29-001`) y guarda en carpeta mensual unificada. |
+| **SER-02** | `POST` | `/api/facturas` | Factura Exenta Sin IVA (`sin_iva=true`). | Comparte la misma secuencia y prefijo unificado, cuota de IVA 0,00 € y guarda en la misma carpeta mensual. |
+| **SER-03** | `PUT` | `/api/facturas/{id}` | Modificar factura alternando entre Con IVA y Sin IVA. | Mantiene el número y correlativo asignado, regenerando el PDF en la misma carpeta mensual. |
 
 
 ---

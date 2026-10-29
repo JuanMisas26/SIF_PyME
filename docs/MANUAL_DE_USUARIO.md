@@ -30,20 +30,14 @@
 
 - **🔒 Cero Nube Forzosa / 100% Local:** Tus datos contables, registros de clientes y propuestas residen únicamente en tu disco duro en una base de datos relacional SQLite con modo WAL (*Write-Ahead Logging*). No hay telemetría, ni cuotas mensuales, ni riesgo de filtración en servidores externos.
 - **🖥️ Estándar macOS Human Interface Guidelines (HIG):** Interfaz unificada con barra de herramientas superior (*Toolbar*), navegación lateral categorizada, tabla de datos interactiva (*NSTableView*) e inspector lateral de detalle (*NSInspector*).
-- **📂 Organización Física Predecible:** Los documentos PDF oficiales se almacenan y clasifican automáticamente en tu sistema de archivos por régimen fiscal (*Con IVA* vs *Sin IVA*), Año y Mes de emisión.
+- **📂 Organización Física Predecible:** Los documentos PDF oficiales se almacenan y clasifican automáticamente en una estructura jerárquica unificada por Año, Trimestre y Mes de emisión (sin dispersión de carpetas por régimen de IVA).
 
 ```
 📁 Directorio Base de Almacenamiento (Configurable)
-├── 📁 Facturas_Con_IVA/
-│   └── 📁 2026/
-│       ├── 📁 01-Enero/  --> FAC-2026-001.pdf
-│       └── 📁 10-Octubre/ --> FAC-2026-045.pdf
-├── 📁 Facturas_Sin_IVA/
-│   └── 📁 2026/
-│       └── 📁 10-Octubre/ --> FS-2026-003.pdf
-└── 📁 Presupuestos/
+└── 📁 PDFs/
     └── 📁 2026/
-        └── PRE-2026-012.pdf
+        └── 📁 4T/
+            └── 📁 10_Octubre/ --> FAC-2026-10-29-001.pdf
 ```
 
 ---
@@ -104,9 +98,10 @@ Para emitir una factura, pulsa el botón principal **«+ Nueva Factura»** (o el
 ### 4.1. Flujo Paso a Paso de Emisión
 1. **Cliente Destinatario:** Teclea las primeras letras del cliente para autocompletar su razón social, NIF y dirección. Si es un cliente nuevo, pulsa **«Nuevo Cliente…»** para darlo de alta en un modal sin perder la factura en curso.
 2. **Fechas:** Establece la fecha legal de emisión y, opcionalmente, la fecha de vencimiento.
-3. **Régimen de IVA:**
+3. **Régimen de IVA y Numeración Unificada:**
    - *Régimen General (Con IVA):* Aplica el IVA general (21%), reducido (10%), superreducido (4%) o exento (0%).
-   - *Régimen Exento / Sin IVA:* Al marcar la casilla «Factura Exenta de IVA», la serie y numeración conmutan automáticamente a la serie exenta (ej. `FS-2026-001`) y el IVA se desactiva legalmente con la leyenda de exención correspondiente.
+   - *Régimen Exento / Sin IVA:* Al marcar la casilla «Factura Exenta de IVA», el IVA se establece al 0% y se incorpora la leyenda legal correspondiente. La numeración mantiene la secuencia unificada `[Prefijo]-[AÑO]-[MES]-[DIA]-[ID]` sin forzar series separadas.
+   - *Misma Carpeta Física:* Todas las facturas se guardan en la carpeta unificada mensual de PDFs para una gestión contable más sencilla y sin duplicidades.
 4. **Adición de Líneas de Conceptos:**
    - Escribe un concepto libre o selecciona un producto del catálogo mediante el botón **«Catálogo»**.
    - Cada línea cuenta con campos independientes para **Descripción del Producto**, **Detalle / Especificación Técnica** (`detalle_material`), unidades, precio unitario, % IVA y % IRPF.
@@ -218,11 +213,12 @@ En SIF PyME, borrar nunca destruye tus datos por accidente:
 
 En `/configuracion` se gestionan los parámetros legales del sistema:
 
-### 10.1. Series y Numeraciones Diferenciadas
-Cumpliendo con la normativa tributaria española, las operaciones exentas o sujetas a regímenes especiales deben llevar una serie independiente:
-- **Serie General (Con IVA):** Por defecto `Factura Nº` (ej. `FAC-2026-001`).
-- **Serie Sin IVA / Exenta:** Por defecto `Factura Sin IVA Nº` (ej. `FS-2026-001`).
-- **Número de Inicio Configurable:** Puedes establecer el número correlativo con el que deseas arrancar el año fiscal (ej. comenzar en `101` si vienes de otro programa de facturación).
+### 10.1. Numeración Unificada y Prefijo Configurable
+El sistema implementa una numeración estructurada y uniforme para todo el ejercicio:
+- **Estructura Oficial:** `[Prefijo]-[AÑO]-[MES]-[DIA]-[ID]` (ej. `FAC-2026-10-29-001`).
+- **Prefijo Configurable:** Personalizable desde los ajustes de facturación (por defecto `FAC`).
+- **Secuencia Única:** Todas las facturas (con IVA o exentas) comparten la misma secuencia correlativa continua.
+- **Número de Inicio Configurable:** Puedes definir el valor numérico inicial con el que arrancar la serie (ej. empezar en `1` o en `1001`).
 
 ### 10.2. Motor de Snapshots y Copias de Seguridad
 - **Copias Automáticas:** La aplicación realiza un volcado de base de datos (`.db`) con marca de tiempo cada vez que se emite o modifica un documento contable.

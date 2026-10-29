@@ -8,15 +8,16 @@ Software de facturación y gestión presupuestaria local para pequeñas empresas
 
 - **🖥️ Experiencia Nativa macOS HIG**: Interfaz de escritorio con diseño de ventana unificada, barra de herramientas (*Toolbar*), navegación lateral en dos secciones (*Gestión* y *Directorio*) con contadores en tiempo real (`/api/contadores`), tabla interactiva con selección suave (*NSTableView*) y panel inspector lateral.
 - **📄 Facturación Oficial e Histórica**: 
-  - Numeración diaria estructurada `FAC-[AÑO]-[MES]-[DIA]-[Identificador]` (ej. `FAC-2026-10-19-001`).
+  - Numeración diaria unificada y estructurada: `[Prefijo]-[AÑO]-[MES]-[DIA]-[Identificador]` (ej. `FAC-2026-10-29-001`), con prefijo configurable y secuencia correlativa continua tanto para facturas con IVA como exentas.
   - Validación de NIF/CIF, IBAN (Módulo 97 ISO 7064) y código postal provincial.
   - Snapshots de emisor y cliente en cada factura para preservar la validez legal del histórico ante cambios futuros.
-  - Generación de PDF oficial instantáneo (< 1s) con desglose de IVA y retenciones IRPF.
-- **📑 Presupuestos Editoriales y Propuestas de Proyecto**:
-  - Propuestas con portada, bienvenida personalizada, fases de trabajo configurables y condiciones comerciales.
+  - Generación de PDF oficial instantáneo (< 1s) con desglose de IVA y retenciones IRPF en paleta neutral y formato directo.
+  - Almacenamiento unificado en carpetas por Año, Trimestre y Mes (`{AÑO}/{TRIMESTRE}T/{MES_NOMBRE}/`), eliminando subcarpetas innecesarias de régimen fiscal.
+- **📑 Presupuestos Directos y Propuestas Comerciales**:
+  - Propuestas comerciales directas y limpias con datos de documento, cliente, opciones de partidas y condiciones comerciales al pie (sin portadas, bienvenidas ni páginas de proceso decorativas superfluas).
   - Soporte de múltiples **Opciones / Variantes** de productos con cálculo automático de rangos de importe (`total_minimo` y `total_maximo`).
   - Conversión directa de la opción aprobada a factura oficial emitida con un solo clic.
-  - Paginación dinámica y generación de PDF editorial con control de desbordamiento de productos.
+  - Paginación dinámica y generación de PDF con control de desbordamiento de productos.
 - **📦 Catálogo Avanzado de Productos y Servicios**:
   - Gestión directa y limpia orientada al **Nombre Comercial** y **Descripción Técnica**, prescindiendo de códigos/SKU artificiales innecesarios.
   - **Precios Escalados por Volumen (Tiered Pricing)**: Configuración de tramos de cantidad (ej. 1–49 uds a 6,50 €, 50–99 uds a 5,20 €, 100+ uds a 4,10 €) con ajuste reactivo automático en facturas y presupuestos.
@@ -194,12 +195,13 @@ Si dispone de una suscripción activa al *Apple Developer Program*:
 
 ## 🧪 Robustez y Suite de Tests Automatizados
 
-La aplicación cuenta con una suite completa de **47 tests automatizados** (`pytest`) que validan:
+La aplicación cuenta con una suite completa de **116 tests automatizados** (`pytest`) que validan:
 - **Identificadores fiscales y cuentas bancarias**: Algoritmos de control para NIF, NIE, CIF, VAT intracomunitario e IBAN Módulo 97.
 - **Cálculos financieros**: Redondeo `ROUND_HALF_UP` en bases imponibles, cuotas de IVA, retenciones IRPF y subtotales.
-- **Presupuestos Editoriales**: Creación, rangos de precio mínimo/máximo, asociación de opciones, filtros de líneas y conversión a facturas.
-- **Ciclo de vida y edición de facturas**: Creación, edición completa con recálculo dinámico (`PUT /api/facturas/{id}`), coherencia de fechas, generación de PDF oficial y prevención de duplicidad en series diarias `FAC-[AÑO]-[MES]-[DIA]-[Identificador]`.
-- **Productos con nombre y descripción**: Integridad del modelo de catálogo y retrocompatibilidad.
+- **Presupuestos y Propuestas**: Creación directa, rangos de precio mínimo/máximo, asociación de opciones, filtros de líneas, paginación dinámica y conversión a facturas.
+- **Ciclo de vida y edición de facturas**: Creación, edición completa con recálculo dinámico (`PUT /api/facturas/{id}`), coherencia de fechas, generación de PDF oficial y prevención de duplicidad en series diarias `[Prefijo]-[AÑO]-[MES]-[DIA]-[Identificador]`.
+- **Régimen Con / Sin IVA unificado**: Misma secuencia y prefijo configurable entre facturas con IVA y exentas, con organización física unificada de PDFs.
+- **Productos con nombre y descripción**: Integridad del modelo de catálogo, escalados por volumen y variantes.
 
 Para ejecutar los tests automatizados:
 ```powershell
@@ -314,11 +316,11 @@ El sistema almacena los datos de forma aislada respetando las directivas del sis
 ### En macOS (Apple HIG):
 - **Base de Datos SQLite**: `~/Library/Application Support/SIF PyME/facturacion_pyme.db`
 - **Copias de Seguridad (Snapshots)**: `~/Library/Application Support/SIF PyME/Backups/Snapshots/`
-- **Documentos PDF**: `~/Documents/Facturas/PDFs/{AÑO}/{MES}/` y `~/Documents/Facturas/Presupuestos/{AÑO}/`
+- **Documentos PDF**: `~/Documents/Facturas/PDFs/{AÑO}/{TRIMESTRE}T/{MES_NOMBRE}/`
 
 ### En Windows / Linux:
 - **Base de Datos y Backups**: `~/Facturas/`
-- **Documentos PDF**: `~/Facturas/PDFs/{AÑO}/{MES}/` y `~/Facturas/Presupuestos/{AÑO}/`
+- **Documentos PDF**: `~/Facturas/PDFs/{AÑO}/{TRIMESTRE}T/{MES_NOMBRE}/`
 
 > **Protección contra pérdida de datos**: Ningún registro se borra físicamente de la base de datos (`is_deleted = 1`). Cada vez que se genera una factura, se crea un snapshot timestamped en el directorio de backups.
 
